@@ -132,6 +132,51 @@ This is a test email body.
         assert 'This is a test email body.' in email_obj['body']
         assert email_obj['preview'] == 'This is a test email body.'
 
+class TestEmailServiceFolderParsing:
+    """Test cases for EmailService folder parsing functionality"""
+    
+    def test_parse_folder_name_and_attributes(self):
+        """Test IMAP folder parsing with various formats"""
+        service = EmailService()
+        
+        # Test standard Gmail format
+        folder_info = '* LIST (\\HasNoChildren) "/" "INBOX"'
+        result = service._parse_folder_name_and_attributes(folder_info)
+        assert result['name'] == 'INBOX'
+        assert result['attributes'] == ['HasNoChildren']
+        assert result['is_selectable'] == True
+        
+        # Test with hidden folder
+        folder_info = '* LIST (\\HasNoChildren \\All) "/" "[Gmail]/All Mail"'
+        result = service._parse_folder_name_and_attributes(folder_info)
+        assert result['name'] == '[Gmail]/All Mail'
+        assert result['is_hidden'] == True
+        
+        # Test with Noselect attribute
+        folder_info = '* LIST (\\Noselect \\HasChildren) "/" "Gmail"'
+        result = service._parse_folder_name_and_attributes(folder_info)
+        assert result['name'] == 'Gmail'
+        assert result['is_selectable'] == False
+    
+    def test_is_folder_hidden(self):
+        """Test folder hidden detection logic"""
+        service = EmailService()
+        
+        # Test Gmail hidden patterns
+        assert service._is_folder_hidden('[Gmail]/All Mail', ['All']) == True
+        assert service._is_folder_hidden('Gmail/Spam', []) == True
+        assert service._is_folder_hidden('INBOX', []) == False
+        
+        # Test Outlook patterns
+        assert service._is_folder_hidden('Calendar', []) == True
+        assert service._is_folder_hidden('Contacts', []) == True
+        assert service._is_folder_hidden('Sync Issues', []) == True
+        
+        # Test attribute-based hiding
+        assert service._is_folder_hidden('SomeFolder', ['Hidden']) == True
+        assert service._is_folder_hidden('SomeFolder', ['Noselect']) == True
+        assert service._is_folder_hidden('SomeFolder', ['Archive']) == True
+
 class TestAIService:
     """Test cases for AIService class"""
     
@@ -393,8 +438,24 @@ class TestAPIEndpoints:
     def test_list_folders(self, mock_email_service, client):
         """Test folder listing endpoint"""
         mock_folders = [
-            {'name': 'INBOX', 'display_name': 'Inbox', 'type': 'inbox'},
-            {'name': 'Sent', 'display_name': 'Sent', 'type': 'sent'}
+            {
+                'name': 'INBOX', 
+                'display_name': 'Inbox', 
+                'type': 'inbox',
+                'attributes': [],
+                'is_hidden': False,
+                'is_selectable': True,
+                'delimiter': '/'
+            },
+            {
+                'name': 'Sent', 
+                'display_name': 'Sent', 
+                'type': 'sent',
+                'attributes': [],
+                'is_hidden': False,
+                'is_selectable': True,
+                'delimiter': '/'
+            }
         ]
         mock_email_service.list_folders.return_value = mock_folders
         
@@ -404,6 +465,51 @@ class TestAPIEndpoints:
         data = json.loads(response.data)
         assert len(data['folders']) == 2
         assert data['folders'][0]['name'] == 'INBOX'
+        assert data['folders'][0]['is_selectable'] == True
+    
+    @patch('app.email_service')
+    def test_list_folders_with_hidden(self, mock_email_service, client):
+        """Test folder listing endpoint with hidden folders"""
+        mock_folders_visible = [
+            {
+                'name': 'INBOX', 
+                'display_name': 'Inbox', 
+                'type': 'inbox',
+                'attributes': [],
+                'is_hidden': False,
+                'is_selectable': True,
+                'delimiter': '/'
+            }
+        ]
+        mock_folders_all = mock_folders_visible + [
+            {
+                'name': '[Gmail]/All Mail', 
+                'display_name': 'All Mail', 
+                'type': 'archive',
+                'attributes': ['All'],
+                'is_hidden': True,
+                'is_selectable': True,
+                'delimiter': '/'
+            }
+        ]
+        
+        # Mock different responses based on include_hidden parameter
+        def mock_list_folders(include_hidden=False):
+            return mock_folders_all if include_hidden else mock_folders_visible
+        
+        mock_email_service.list_folders.side_effect = mock_list_folders
+        
+        # Test without hidden folders
+        response = client.get('/api/folders')
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert len(data['folders']) == 1
+        
+        # Test with hidden folders
+        response = client.get('/api/folders?include_hidden=true')
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert len(data['folders']) == 2
     
     @patch('app.email_service')
     def test_get_emails(self, mock_email_service, client):

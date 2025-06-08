@@ -291,7 +291,9 @@ class NimbusRelayApp {
     async loadFolders() {
         try {
             console.log('📁 Loading email folders...');
-            const response = await fetch('/api/folders');
+            // Load visible folders by default, with option to include hidden
+            const includeHidden = false; // Can be made configurable later
+            const response = await fetch(`/api/folders?include_hidden=${includeHidden}`);
             const data = await response.json();
             
             if (data.folders) {
@@ -402,10 +404,23 @@ class NimbusRelayApp {
         
         div.dataset.folder = folder.name;
         
-        const icon = this.getFolderIcon(folder.type);
+        const icon = this.getFolderIcon(folder.type, folder.attributes || []);
+        const displayName = folder.display_name || folder.name;
+        
+        // Add visual indicators for special folder properties
+        let indicators = '';
+        if (folder.is_hidden) {
+            indicators += '<span class="folder-indicator hidden" title="Hidden folder">🔒</span>';
+        }
+        if (!folder.is_selectable) {
+            indicators += '<span class="folder-indicator non-selectable" title="Non-selectable">⚠️</span>';
+        }
+        
         div.innerHTML = `
             <span class="folder-icon">${icon}</span>
-            <span class="folder-name">${folder.display_name}</span>
+            <span class="folder-name">${displayName}</span>
+            ${indicators}
+            <span class="folder-count" id="count-${folder.name.replace(/[^a-zA-Z0-9]/g, '_')}"></span>
         `;
         
         div.addEventListener('click', () => this.selectFolder(folder.name));
@@ -416,16 +431,26 @@ class NimbusRelayApp {
     /**
      * Get icon for folder type
      */
-    getFolderIcon(type) {
+    getFolderIcon(type, attributes = []) {
         const icons = {
             'inbox': '📥',
             'sent': '📤',
             'drafts': '📝',
             'trash': '🗑️',
             'spam': '🛡️',
+            'archive': '📦',
+            'starred': '⭐',
+            'important': '❗',
             'custom': '📁'
         };
-        return icons[type] || '📁';
+        
+        // Check for special attributes that might override the type-based icon
+        if (attributes.includes('All')) return '📦';
+        if (attributes.includes('Starred')) return '⭐';
+        if (attributes.includes('Important')) return '❗';
+        if (attributes.includes('Archive')) return '📦';
+        
+        return icons[type] || icons['custom'];
     }
     
     /**

@@ -1,8 +1,8 @@
 # Your operating environment
 - You are running on Windows
-- You are already in current project directory
-- Use ; separator when you need to execute multiple commands
 - Use Windows PowerShell commands
+- You are already in current project directory, you don't need to make "cd" to poject folder
+- Use ; separator when you need to execute multiple commands in console or terminal, you should not use &&
 
 # Python Packages
 - Never specify exact version of python packages, use latest

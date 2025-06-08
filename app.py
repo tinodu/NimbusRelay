@@ -69,8 +69,8 @@ class EmailService:
                 pass
             self.connection = None
     
-    def list_folders(self) -> List[Dict[str, Any]]:
-        """List all available email folders"""
+    def list_folders(self, include_hidden: bool = False) -> List[Dict[str, Any]]:
+        """List all available email folders with visibility filtering"""
         if not self.connection:
             return []
         
@@ -78,36 +78,303 @@ class EmailService:
             status, folders = self.connection.list()
             folder_list = []
             
-            for folder in folders:
-                folder_info = folder.decode('utf-8')
-                # Parse folder information
-                parts = folder_info.split('"')
-                if len(parts) >= 3:
-                    folder_name = parts[-2]
-                    folder_list.append({
-                        'name': folder_name,
-                        'display_name': folder_name.split('.')[-1].title(),
-                        'type': self._get_folder_type(folder_name)
-                    })
+            print(f"IMAP LIST status: {status}")
+            print(f"Raw folder data: {folders}")
             
+            if status != 'OK':
+                print(f"IMAP LIST failed with status: {status}")
+                return []
+            
+            for folder in folders:
+                try:
+                    folder_info = folder.decode('utf-8') if isinstance(folder, bytes) else str(folder)
+                    print(f"Processing folder info: {repr(folder_info)}")
+                    
+                    # Parse folder with attributes
+                    parsed_folder = self._parse_folder_name_and_attributes(folder_info)
+                    
+                    if not parsed_folder:
+                        continue
+                    
+                    # Skip hidden folders unless explicitly requested
+                    if parsed_folder['is_hidden'] and not include_hidden:
+                        print(f"Skipping hidden folder: {parsed_folder['name']}")
+                        continue
+                    
+                    # Skip non-selectable folders
+                    if not parsed_folder['is_selectable']:
+                        print(f"Skipping non-selectable folder: {parsed_folder['name']}")
+                        continue
+                    
+                    # Clean up folder name and create display name
+                    clean_name = parsed_folder['name'].strip('"').strip()
+                    display_name = self._create_display_name(clean_name)
+                    
+                    folder_entry = {
+                        'name': clean_name,
+                        'display_name': display_name,
+                        'type': self._get_folder_type(clean_name),
+                        'attributes': parsed_folder['attributes'],
+                        'is_hidden': parsed_folder['is_hidden'],
+                        'is_selectable': parsed_folder['is_selectable'],
+                        'delimiter': parsed_folder['delimiter']
+                    }
+                    
+                    folder_list.append(folder_entry)
+                    print(f"Added folder: {folder_entry}")
+                    
+                except Exception as e:
+                    print(f"Failed to parse folder: {folder_info}, error: {e}")
+                    continue
+            
+            # If no folders found, add some standard ones
+            if not folder_list:
+                print("No folders found, adding standard folders...")
+                standard_folders = ['INBOX', 'SENT', 'DRAFTS', 'SPAM', 'TRASH']
+                for std_folder in standard_folders:
+                    try:
+                        # Test if folder exists by trying to select it
+                        test_status, _ = self.connection.select(std_folder, readonly=True)
+                        if test_status == 'OK':
+                            folder_list.append({
+                                'name': std_folder,
+                                'display_name': std_folder.title(),
+                                'type': self._get_folder_type(std_folder),
+                                'attributes': [],
+                                'is_hidden': False,
+                                'is_selectable': True,
+                                'delimiter': '/'
+                            })
+                            print(f"Added standard folder: {std_folder}")
+                    except Exception as e:
+                        print(f"Standard folder {std_folder} not available: {e}")
+                        continue
+            
+            # Sort folders by importance and name
+            folder_list.sort(key=lambda x: (
+                x['type'] != 'inbox',  # Inbox first
+                x['type'] not in ['sent', 'drafts', 'trash'],  # Important folders next
+                x['display_name'].lower()  # Then alphabetical
+            ))
+            
+            print(f"Final folder list ({len(folder_list)} folders): {[f['name'] for f in folder_list]}")
             return folder_list
+            
         except Exception as e:
             print(f"Failed to list folders: {e}")
             return []
     
+    def _parse_folder_name_and_attributes(self, folder_info: str) -> Dict[str, Any]:
+        """Parse folder name and attributes from IMAP LIST response"""
+        try:
+            # Parse IMAP LIST response format:
+            # (attributes) "delimiter" "folder_name" or (attributes) "delimiter" folder_name
+            import re
+            
+            # Extract attributes, delimiter, and folder name
+            # Handle escaped backslashes in attributes
+            
+            # Try format: (attributes) "delimiter" "folder_name"
+            pattern = r'\(([^)]*)\) "([^"]*)" "([^"]*)"'
+            match = re.match(pattern, folder_info)
+            
+            if not match:
+                # Try format: (attributes) "delimiter" folder_name (without quotes around folder)
+                pattern = r'\(([^)]*)\) "([^"]*)" (.+)'
+                match = re.match(pattern, folder_info)
+            
+            if not match:
+                # Try format: (attributes) delimiter folder_name (no quotes around delimiter)
+                pattern = r'\(([^)]*)\) ([^ ]+) (.+)'
+                match = re.match(pattern, folder_info)
+            
+            if not match:
+                # Try format with NIL delimiter: (attributes) NIL folder_name
+                pattern = r'\(([^)]*)\) NIL (.+)'
+                match = re.match(pattern, folder_info)
+            
+            if match:
+                # Extract data based on which pattern matched
+                attributes_str = match.group(1)
+                if len(match.groups()) == 3:
+                    # Standard format: (attributes) "delimiter" folder_name
+                    delimiter = match.group(2).strip('"')
+                    folder_name = match.group(3).strip('"')
+                else:
+                    # NIL delimiter format: (attributes) NIL folder_name
+                    delimiter = '/'
+                    folder_name = match.group(2).strip('"')
+            else:
+                # Fallback: just extract folder name from the end
+                # Look for pattern: anything ending with a folder name
+                parts = folder_info.split()
+                if len(parts) >= 3:
+                    folder_name = parts[-1].strip('"')
+                    delimiter = '/'
+                    attributes_str = folder_info.split(')')[0].replace('(', '')
+                else:
+                    print(f"Could not parse folder info: {folder_info}")
+                    return None
+            
+            # Parse attributes - handle escaped backslashes
+            attributes = []
+            if attributes_str.strip():
+                # Split by spaces but handle escaped backslashes
+                attr_parts = attributes_str.split()
+                for attr in attr_parts:
+                    # Remove leading backslash and any extra escaping
+                    clean_attr = attr.strip('\\').strip()
+                    if clean_attr:
+                        attributes.append(clean_attr)
+            
+            # Determine if folder is hidden
+            is_hidden = self._is_folder_hidden(folder_name, attributes)
+            
+            # Determine if folder is selectable
+            is_selectable = 'Noselect' not in attributes
+            
+            return {
+                'name': folder_name,
+                'attributes': attributes,
+                'delimiter': delimiter.strip('"') if delimiter and delimiter != 'NIL' else '/',
+                'is_hidden': is_hidden,
+                'is_selectable': is_selectable
+            }
+            
+        except Exception as e:
+            print(f"Failed to parse folder info: {folder_info}, error: {e}")
+            return None
+
+    def _is_folder_hidden(self, folder_name: str, attributes: List[str]) -> bool:
+        """Determine if a folder should be considered hidden"""
+        
+        # Check for explicit hidden attributes
+        hidden_attributes = {'Hidden', 'Noselect', 'All', 'Archive', 'Important'}
+        if any(attr in hidden_attributes for attr in attributes):
+            return True
+        
+        # Check for server-specific hidden patterns
+        folder_lower = folder_name.lower()
+        
+        # Gmail patterns
+        gmail_hidden = [
+            '[gmail]', 'gmail/', 'all mail', 'important', 'starred',
+            'chats', 'spam', 'trash'
+        ]
+        if any(pattern in folder_lower for pattern in gmail_hidden):
+            return True
+        
+        # Outlook/Exchange patterns  
+        outlook_hidden = [
+            'calendar', 'contacts', 'tasks', 'notes', 'journal',
+            'sync issues', 'conversation history', 'quick step settings',
+            'suggested contacts', 'recipient cache'
+        ]
+        if any(pattern in folder_lower for pattern in outlook_hidden):
+            return True
+        
+        # Yahoo patterns
+        yahoo_hidden = ['bulk mail']
+        if any(pattern in folder_lower for pattern in yahoo_hidden):
+            return True
+        
+        # System/Technical folders
+        system_patterns = [
+            '.', '..', 'tmp', 'temp', '.imap', '.subscriptions',
+            'calendar', 'contacts', 'tasks'
+        ]
+        if folder_name in system_patterns or folder_lower in system_patterns:
+            return True
+        
+        return False
+
+    def _parse_folder_name(self, folder_info: str) -> str:
+        """Parse folder name from various IMAP response formats"""
+        try:
+            # Common IMAP response formats:
+            # * LIST (\HasNoChildren) "." "INBOX"
+            # * LIST (\HasChildren) "/" "Folder Name"
+            # * LIST () "/" "INBOX.Sent"
+            
+            # Method 1: Look for quoted folder name at the end
+            if '"' in folder_info:
+                parts = folder_info.split('"')
+                # Usually the folder name is the last quoted string
+                for i in range(len(parts) - 1, -1, -1):
+                    if parts[i].strip() and not parts[i].strip() in ['/', '.', '\\']:
+                        folder_name = parts[i]
+                        print(f"Extracted folder name (quoted): {folder_name}")
+                        return folder_name
+            
+            # Method 2: Split by spaces and take the last part if no quotes
+            parts = folder_info.split()
+            if len(parts) > 0:
+                # Remove common IMAP list prefixes and flags
+                folder_name = parts[-1]
+                # Clean up common prefixes
+                if folder_name.startswith('*'):
+                    folder_name = ' '.join(parts[1:]) if len(parts) > 1 else ''
+                
+                print(f"Extracted folder name (space split): {folder_name}")
+                return folder_name
+            
+            print(f"Could not parse folder name from: {folder_info}")
+            return ""
+            
+        except Exception as e:
+            print(f"Error parsing folder name from '{folder_info}': {e}")
+            return ""
+    
+    def _create_display_name(self, folder_name: str) -> str:
+        """Create a human-readable display name from folder name"""
+        try:
+            # Handle hierarchical folder names (e.g., "INBOX.Sent" -> "Sent")
+            if '.' in folder_name:
+                display_name = folder_name.split('.')[-1]
+            elif '/' in folder_name:
+                display_name = folder_name.split('/')[-1]
+            else:
+                display_name = folder_name
+            
+            # Clean up and format
+            display_name = display_name.replace('_', ' ').replace('-', ' ')
+            
+            # Special cases for common folder names
+            display_name_lower = display_name.lower()
+            if display_name_lower == 'inbox':
+                return 'Inbox'
+            elif display_name_lower in ['sent', 'sent items', 'sent messages']:
+                return 'Sent'
+            elif display_name_lower in ['drafts', 'draft']:
+                return 'Drafts'
+            elif display_name_lower in ['spam', 'junk', 'junk e-mail', 'junk email']:
+                return 'Spam'
+            elif display_name_lower in ['trash', 'deleted', 'deleted items', 'deleted messages']:
+                return 'Trash'
+            else:
+                return display_name.title()
+                
+        except Exception as e:
+            print(f"Error creating display name for '{folder_name}': {e}")
+            return folder_name
+    
     def _get_folder_type(self, folder_name: str) -> str:
         """Determine folder type based on name"""
         folder_lower = folder_name.lower()
+        # Check more specific patterns first
         if 'spam' in folder_lower or 'junk' in folder_lower:
             return 'spam'
-        elif 'inbox' in folder_lower:
-            return 'inbox'
         elif 'sent' in folder_lower:
             return 'sent'
         elif 'draft' in folder_lower:
             return 'drafts'
         elif 'trash' in folder_lower or 'deleted' in folder_lower:
             return 'trash'
+        elif folder_lower == 'inbox' or folder_lower.endswith('inbox'):
+            return 'inbox'
+        elif 'inbox' in folder_lower:
+            # For subfolders of INBOX, return custom unless already matched above
+            return 'custom'
         else:
             return 'custom'
     
@@ -422,12 +689,18 @@ def connect_services():
 
 @app.route('/api/folders')
 def list_folders():
-    """List email folders"""
+    """List email folders with optional hidden folder inclusion"""
     try:
-        folders = email_service.list_folders()
+        include_hidden = request.args.get('include_hidden', 'false').lower() == 'true'
+        
+        if not email_service.connection:
+            return jsonify({'error': 'Not connected to email server'}), 400
+        
+        folders = email_service.list_folders(include_hidden=include_hidden)
         return jsonify({'folders': folders})
+        
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': f'Failed to get folders: {str(e)}'}), 500
 
 @app.route('/api/emails')
 def get_emails():
