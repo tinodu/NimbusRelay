@@ -1,15 +1,52 @@
 # Your operating environment
 - You are running on Windows
+- You are already in current project directory
 - Use ; separator when you need to execute multiple commands
 - Use Windows PowerShell commands
 
-# Styling and formatting
-When doing styles, always use dark themed styles
-When choosing colors, ooking for colors that exude grandeur, prestige, and nobility—a regal palette! In higher-level terms, these shades fall under the category of “imperial” or “majestic” colors, often associated with royalty, power, and luxury, such as Imperial Purple, Royal Blue and others. Select shades from the Pantone Matching System (PMS) that align with the richness and elegance of imperial hues.
+# Formatting
 When working with date and time, always use European date and time formatting
 
+# Color Usage Guidelines
+When doing styles, always use dark themed style
+When choosing colors, looking for colors that exude grandeur, prestige, and nobility—a regal palette! 
+In higher-level terms, these shades fall under the category of “imperial” or “majestic” colors, often associated with royalty, power, and luxury, such as Imperial Purple, Royal Blue and others. 
+Select shades from the Pantone Matching System (PMS) that align with the richness and elegance of imperial hues.
+
+## **1. Color Harmony Principles**
+To achieve a **cohesive and visually pleasing** design, follow these principles:
+- **Analogous Colors** – Use colors that sit next to each other on the color wheel for a smooth transition.
+- **Monochromatic Shades** – Maintain consistency by using variations of a single color.
+- **Limited Palette** – Stick to **3-5 core colors** to avoid excessive contrast.
+- **Soft Contrast** – Avoid sharp transitions; use intermediate shades for blending.
+
+## **2. Establishing a Hierarchy**
+Define colors based on their function:
+- **Primary Color** – The dominant theme color (e.g., Dark Purple #4B0082).
+- **Secondary Colors** – Supportive accents that blend well (e.g., Deep Maroon #800020, Navy #1E1B45).
+- **Neutral Colors** – Background and text colors ensuring readability (e.g., Black #000000, Dark Gray #333333, Soft Lavender #A88EBC).
+- **Accent Colors** – Carefully selected pops of color for highlights (e.g., Metallic Silver #C0C0C0).
+
+## **3. Forbidden Color Pairings**
+To prevent excessive contrast or visual strain:
+- **Avoid high saturation clashes**, such as **yellow-green next to deep purple**.
+- **Do not mix warm and cool tones** aggressively (e.g., bright red against cold blue).
+- **Avoid neon colors** in a dark-themed design.
+- **Ensure background and text contrast is subtle yet readable** (e.g., use off-white instead of pure white).
+
+## **4. Recommended Contrast Levels**
+- **Text-to-Background Ratio** – Minimum **4.5:1 contrast** for readability.
+- **Button & UI Elements** – Ensure distinguishable hover effects without harsh color transitions.
+- **Gradient Usage** – Use **soft tonal shifts** instead of sharp edges.
+
+## **5. Implementation Tips**
+- Use **color palettes** in design software (Figma, Photoshop) with pre-set schemes.
+- Define **global color variables** in code (`theme-primary`, `theme-secondary`).
+- Conduct **regular design reviews** to maintain color consistency.
+
 # Testing
-Always write tests, and to validate functionality execute tests, only after tests are successful try running the application to validate additional functionality.
+- It is imperative you always write tests, for both backend and front end
+- To validate functionality execute tests, only after tests are successful try running the application to validate additional functionality.
 
 # Development Guidelines
 ## **Follow SOLID Principles**
