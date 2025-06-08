@@ -4,6 +4,9 @@
 - Use ; separator when you need to execute multiple commands
 - Use Windows PowerShell commands
 
+# Python Packages
+- Never specify exact version of python packages, use latest
+
 # Formatting
 When working with date and time, always use European date and time formatting
 
