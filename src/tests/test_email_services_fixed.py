@@ -1,5 +1,8 @@
 """
-Comprehensive tests for email service components - fixed version
+Comprehensive tests for e        for folder_info, expected_name in folder_tests:
+            result = parser.parse_folder_info(folder_info)
+            assert result is not None
+            assert result.name == expected_name service components - fixed version
 """
 
 import pytest
@@ -30,7 +33,7 @@ class TestIMAPFolderParserFixed:
         for folder_info, expected_name in test_cases:
             result = parser.parse_folder_info(folder_info)
             assert result is not None
-            assert result['name'] == expected_name
+            assert result.name == expected_name
     
     def test_parse_gmail_folders(self, parser):
         """Test parsing Gmail-style folders"""
@@ -43,7 +46,7 @@ class TestIMAPFolderParserFixed:
         for folder_info, expected_name in test_cases:
             result = parser.parse_folder_info(folder_info)
             assert result is not None
-            assert result['name'] == expected_name
+            assert result.name == expected_name
 
 
 class TestEmailMessageParserFixed:
