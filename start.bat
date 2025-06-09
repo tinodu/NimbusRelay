@@ -67,14 +67,12 @@ if not exist .env (
 REM Run tests to verify everything is working
 echo.
 echo 🧪 Running quick validation tests...
-cd src\tests
-python -m pytest test_app.py -v --tb=short
+python -m pytest src\tests\test_simple.py -v --tb=short
 if %errorlevel% neq 0 (
     echo ⚠️  Some tests failed, but application may still work
 ) else (
     echo ✅ All tests passed
 )
-cd ..\..
 
 REM Start the application
 echo.
@@ -88,7 +86,7 @@ echo ================================================
 echo.
 
 REM Start the Flask application
-python app.py
+python main.py
 
 echo.
 echo 👋 NimbusRelay stopped. Thank you for using Imperial Purple email management!
