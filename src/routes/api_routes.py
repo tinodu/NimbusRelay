@@ -1,0 +1,153 @@
+"""
+API routes for NimbusRelay application
+Handles REST API endpoints following Single Responsibility Principle
+"""
+
+from flask import Flask, request, jsonify
+from src.services.service_manager import ServiceManager
+from src.config.environment import EnvironmentManager
+from src.config.settings import Config
+
+
+# Global service manager instance
+service_manager = ServiceManager()
+env_manager = EnvironmentManager()
+
+
+def register_api_routes(app: Flask) -> None:
+    """
+    Register all API routes with the Flask application
+    
+    Args:
+        app: Flask application instance
+    """
+    
+    @app.route('/api/config')
+    def get_config():
+        """Get current configuration status"""
+        try:
+            env_vars = Config.get_required_env_vars()
+            missing_vars = [k for k, v in env_vars.items() if not v]
+            
+            return jsonify({
+                'configured': len(missing_vars) == 0,
+                'missing_vars': missing_vars,
+                'current_config': {k: bool(v) for k, v in env_vars.items()}
+            })
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/config', methods=['POST'])
+    def save_config():
+        """Save configuration parameters"""
+        try:
+            data = request.get_json()
+            
+            for key, value in data.items():
+                if not env_manager.save_env_var(key, value):
+                    return jsonify({
+                        'success': False, 
+                        'error': f'Failed to save {key}'
+                    }), 500
+            
+            return jsonify({
+                'success': True, 
+                'message': 'Configuration saved successfully'
+            })
+            
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+    
+    @app.route('/api/connect', methods=['POST'])
+    def connect_services():
+        """Connect to email and AI services"""
+        try:
+            env_vars = Config.get_required_env_vars()
+            result = service_manager.connect_services(env_vars)
+            
+            if result['success']:
+                return jsonify(result)
+            else:
+                return jsonify(result), 400
+                
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+    
+    @app.route('/api/folders')
+    def list_folders():
+        """List email folders with optional hidden folder inclusion"""
+        try:
+            include_hidden = request.args.get('include_hidden', 'false').lower() == 'true'
+            result = service_manager.get_folders(include_hidden)
+            
+            if 'error' in result:
+                return jsonify(result), 400
+            
+            return jsonify(result)
+            
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/emails')
+    def get_emails():
+        """Get emails from specified folder"""
+        try:
+            folder = request.args.get('folder', 'INBOX')
+            limit = int(request.args.get('limit', 50))
+            
+            result = service_manager.get_emails(folder, limit)
+            
+            if 'error' in result:
+                return jsonify(result), 400
+            
+            return jsonify(result)
+            
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/analyze-spam', methods=['POST'])
+    def analyze_spam():
+        """Analyze email for spam detection"""
+        try:
+            email_data = request.get_json()
+            result = service_manager.analyze_spam(email_data)
+            
+            if 'error' in result:
+                return jsonify(result), 400
+            
+            return jsonify(result)
+            
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/analyze-email', methods=['POST'])
+    def analyze_email():
+        """Perform comprehensive email analysis"""
+        try:
+            email_data = request.get_json()
+            result = service_manager.analyze_email(email_data)
+            
+            if 'error' in result:
+                return jsonify(result), 400
+            
+            return jsonify(result)
+            
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/generate-draft', methods=['POST'])
+    def generate_draft():
+        """Generate draft response based on email analysis"""
+        try:
+            data = request.get_json()
+            analysis_result = data.get('analysis', '')
+            
+            result = service_manager.generate_draft(analysis_result)
+            
+            if 'error' in result:
+                return jsonify(result), 400
+            
+            return jsonify(result)
+            
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500

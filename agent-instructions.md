@@ -2,6 +2,7 @@
 - You are running on Windows
 - Use Windows PowerShell commands
 - You are already in current project directory, you don't need to make "cd" to poject folder
+- The token '&&' is not a valid statement separator in this version.
 - Use ; separator when you need to execute multiple commands in console or terminal, you should not use &&
 
 # Python Packages

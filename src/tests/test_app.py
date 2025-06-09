@@ -1,6 +1,6 @@
 """
 Test suite for NimbusRelay Email Management Application
-Tests for both backend services and API endpoints
+Tests for modular architecture with SOLID principles
 """
 
 import pytest
@@ -9,12 +9,25 @@ import os
 import tempfile
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
+from dataclasses import asdict
 
-# Import the application
+# Import the modular components
 import sys
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from app import app, EmailService, AIService, get_required_env_vars, save_env_var
+# Import new modular components
+from core.app_factory import create_app
+from config.settings import Config, DevelopmentConfig
+from config.environment import EnvironmentManager
+from models.email_models import EmailFolder, EmailMessage, SpamAnalysisResult, ConnectionConfig
+from src.email_service.interfaces import IEmailService, IFolderParser, IEmailParser
+from src.email_service.imap_service import IMAPEmailService
+from src.email_service.folder_parser import IMAPFolderParser
+from src.email_service.message_parser import EmailMessageParser
+from ai.interfaces import IAIService, IPromptLoader
+from ai.azure_service import AzureAIService
+from services.service_manager import ServiceManager
 
 class TestEmailService:
     """Test cases for EmailService class"""
