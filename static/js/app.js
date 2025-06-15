@@ -861,86 +861,71 @@ class NimbusRelayApp {
      */
     async moveAllSpamToJunk() {
         this.showStatus('Moving spam emails to junk folder...', 'info');
-        console.log('Moving all spam emails to junk folder...');
+        console.log('Moving already marked spam emails to junk folder...');
         
         try {
-            if (!this.emails || this.emails.length === 0) {
-                this.showStatus('No emails to process', 'warning');
+            // Find all emails that are already marked as spam in the UI
+            const spamEmailElements = document.querySelectorAll('.email-item.spam-detected');
+            
+            if (spamEmailElements.length === 0) {
+                this.showStatus('No emails marked as spam found. Please run "Analyze Spam" first to identify spam emails.', 'warning');
                 return;
             }
             
-            let spamCount = 0;
             let movedCount = 0;
-            let totalProcessed = 0;
             const errors = [];
             
-            // First, analyze all emails to identify spam
-            for (const email of this.emails) {
+            console.log(`Found ${spamEmailElements.length} emails already marked as spam`);
+            
+            // Move each spam-marked email
+            for (const emailElement of spamEmailElements) {
                 try {
-                    const response = await fetch('/api/analyze-spam', {
+                    const emailId = emailElement.getAttribute('data-email-id');
+                    
+                    // Find the corresponding email object
+                    const email = this.emails.find(e => e.id === emailId);
+                    if (!email) {
+                        console.warn(`Email with ID ${emailId} not found in emails array`);
+                        continue;
+                    }
+                    
+                    console.log(`Moving spam email: ${email.subject} from ${email.from}`);
+                    
+                    // Move to spam folder
+                    const moveResponse = await fetch('/api/move-email', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify(email)
+                        body: JSON.stringify({
+                            email_id: email.id,
+                            source_folder: this.currentFolder,
+                            target_folder: 'INBOX.spam'
+                        })
                     });
                     
-                    if (response.ok) {
-                        const result = await response.json();
-                        totalProcessed++;
+                    if (moveResponse.ok) {
+                        movedCount++;
+                        console.log(`Successfully moved spam email: ${email.subject}`);
                         
-                        // Check if classification indicates spam
-                        const classification = result.classification || '';
-                        const isSpam = classification.toLowerCase().includes('spam') || 
-                                      classification.toLowerCase().includes('junk') ||
-                                      classification === 'Spam/Junk';
-                        
-                        if (isSpam) {
-                            spamCount++;
-                            console.log(`Spam detected: ${email.subject} from ${email.from}`);
-                            
-                            // Move to spam folder
-                            try {
-                                const moveResponse = await fetch('/api/move-email', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json'
-                                    },
-                                    body: JSON.stringify({
-                                        email_id: email.id,
-                                        source_folder: this.currentFolder,
-                                        target_folder: 'INBOX.spam'
-                                    })
-                                });
-                                
-                                if (moveResponse.ok) {
-                                    movedCount++;
-                                    console.log(`Moved spam email: ${email.subject}`);
-                                } else {
-                                    const moveError = await moveResponse.json().catch(() => ({ error: 'Unknown error' }));
-                                    errors.push(`Failed to move "${email.subject}": ${moveError.error || 'Unknown error'}`);
-                                }
-                            } catch (moveError) {
-                                console.error('Error moving email:', email.subject, moveError);
-                                errors.push(`Failed to move "${email.subject}": ${moveError.message}`);
-                            }
-                        }
-                        
-                        // Update status with progress
-                        this.showStatus(`Processed ${totalProcessed}/${this.emails.length} emails, found ${spamCount} spam, moved ${movedCount}...`, 'info');
+                        // Remove the email element from the UI immediately
+                        emailElement.remove();
                     } else {
-                        const errorResult = await response.json().catch(() => ({ error: 'Unknown error' }));
-                        console.error('Failed to analyze email:', email.subject, 'Error:', errorResult);
-                        errors.push(`Failed to analyze "${email.subject}": ${errorResult.error || 'Unknown error'}`);
+                        const moveError = await moveResponse.json().catch(() => ({ error: 'Unknown error' }));
+                        errors.push(`Failed to move "${email.subject}": ${moveError.error || 'Unknown error'}`);
                     }
-                } catch (error) {
-                    console.error('Error processing email:', email.subject, error);
-                    errors.push(`Error processing "${email.subject}": ${error.message}`);
+                    
+                    // Update status with progress
+                    this.showStatus(`Moved ${movedCount}/${spamEmailElements.length} spam emails...`, 'info');
+                    
+                } catch (moveError) {
+                    console.error('Error moving email:', moveError);
+                    errors.push(`Failed to move email: ${moveError.message}`);
                 }
             }
             
             // Show final results
-            let message = `Spam cleanup complete: ${movedCount} spam emails moved to junk folder out of ${spamCount} spam found from ${totalProcessed} emails analyzed`;
+            let message = `Spam move complete: ${movedCount} already marked spam emails moved to junk folder`;
             
             if (errors.length > 0) {
                 message += ` (${errors.length} errors occurred)`;
@@ -949,7 +934,7 @@ class NimbusRelayApp {
             
             this.showStatus(message, errors.length > 0 ? 'warning' : 'success');
             
-            // Refresh the email list to reflect changes
+            // Refresh the email list to reflect changes if any emails were moved
             if (movedCount > 0) {
                 await this.loadEmails();
             }
