@@ -66,6 +66,11 @@ class NimbusRelayApp {
             analyzeSpamBtn.addEventListener('click', () => this.analyzeAllSpam());
         }
         
+        const moveSpamBtn = document.getElementById('moveSpamBtn');
+        if (moveSpamBtn) {
+            moveSpamBtn.addEventListener('click', () => this.moveAllSpamToJunk());
+        }
+        
         const generateDraftsBtn = document.getElementById('generateDraftsBtn');
         if (generateDraftsBtn) {
             generateDraftsBtn.addEventListener('click', () => this.generateAllDrafts());
@@ -848,6 +853,110 @@ class NimbusRelayApp {
         } catch (error) {
             console.error('Error during spam analysis:', error);
             this.showStatus('Failed to analyze emails for spam', 'error');
+        }
+    }
+    
+    /**
+     * Move all spam emails to INBOX.spam folder
+     */
+    async moveAllSpamToJunk() {
+        this.showStatus('Moving spam emails to junk folder...', 'info');
+        console.log('Moving all spam emails to junk folder...');
+        
+        try {
+            if (!this.emails || this.emails.length === 0) {
+                this.showStatus('No emails to process', 'warning');
+                return;
+            }
+            
+            let spamCount = 0;
+            let movedCount = 0;
+            let totalProcessed = 0;
+            const errors = [];
+            
+            // First, analyze all emails to identify spam
+            for (const email of this.emails) {
+                try {
+                    const response = await fetch('/api/analyze-spam', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(email)
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        totalProcessed++;
+                        
+                        // Check if classification indicates spam
+                        const classification = result.classification || '';
+                        const isSpam = classification.toLowerCase().includes('spam') || 
+                                      classification.toLowerCase().includes('junk') ||
+                                      classification === 'Spam/Junk';
+                        
+                        if (isSpam) {
+                            spamCount++;
+                            console.log(`Spam detected: ${email.subject} from ${email.from}`);
+                            
+                            // Move to spam folder
+                            try {
+                                const moveResponse = await fetch('/api/move-email', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        email_id: email.id,
+                                        source_folder: this.currentFolder,
+                                        target_folder: 'INBOX.spam'
+                                    })
+                                });
+                                
+                                if (moveResponse.ok) {
+                                    movedCount++;
+                                    console.log(`Moved spam email: ${email.subject}`);
+                                } else {
+                                    const moveError = await moveResponse.json().catch(() => ({ error: 'Unknown error' }));
+                                    errors.push(`Failed to move "${email.subject}": ${moveError.error || 'Unknown error'}`);
+                                }
+                            } catch (moveError) {
+                                console.error('Error moving email:', email.subject, moveError);
+                                errors.push(`Failed to move "${email.subject}": ${moveError.message}`);
+                            }
+                        }
+                        
+                        // Update status with progress
+                        this.showStatus(`Processed ${totalProcessed}/${this.emails.length} emails, found ${spamCount} spam, moved ${movedCount}...`, 'info');
+                    } else {
+                        const errorResult = await response.json().catch(() => ({ error: 'Unknown error' }));
+                        console.error('Failed to analyze email:', email.subject, 'Error:', errorResult);
+                        errors.push(`Failed to analyze "${email.subject}": ${errorResult.error || 'Unknown error'}`);
+                    }
+                } catch (error) {
+                    console.error('Error processing email:', email.subject, error);
+                    errors.push(`Error processing "${email.subject}": ${error.message}`);
+                }
+            }
+            
+            // Show final results
+            let message = `Spam cleanup complete: ${movedCount} spam emails moved to junk folder out of ${spamCount} spam found from ${totalProcessed} emails analyzed`;
+            
+            if (errors.length > 0) {
+                message += ` (${errors.length} errors occurred)`;
+                console.error('Errors during spam move operation:', errors);
+            }
+            
+            this.showStatus(message, errors.length > 0 ? 'warning' : 'success');
+            
+            // Refresh the email list to reflect changes
+            if (movedCount > 0) {
+                await this.loadEmails();
+            }
+            
+        } catch (error) {
+            console.error('Error during spam move operation:', error);
+            this.showStatus('Failed to move spam emails', 'error');
         }
     }
     

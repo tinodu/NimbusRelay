@@ -179,14 +179,11 @@ class AzureAIService(IAIService):
             )
         
         try:
-            print(f"[SPAM ANALYSIS] Starting analysis for email: Subject='{email_obj.subject}', From='{email_obj.from_address}'")
-            
             # Load spam detection prompt
             spam_prompt = self.prompt_loader.load_prompt('email-spam')
             
             # Prepare email data for analysis
             email_data = self._prepare_email_for_analysis(email_obj)
-            print(f"[SPAM ANALYSIS] Email data prepared: {json.dumps(email_data, indent=2)}")
             
             response = self.client.chat.completions.create(
                 messages=[
@@ -199,47 +196,26 @@ class AzureAIService(IAIService):
             )
             
             result_text = response.choices[0].message.content.strip()
-            print(f"[SPAM ANALYSIS] Raw AI response: {result_text}")
             
             # Parse JSON response
             try:
                 result_data = json.loads(result_text)
-                print(f"[SPAM ANALYSIS] Parsed JSON response: {result_data}")
-                
-                classification = result_data.get('classification', 'Unknown')
-                original_classification = classification
-                
-                # Normalize classification to match expected format
-                if classification.lower() in ['not spam', 'legitimate', 'valid', 'ham']:
-                    classification = 'Valid'
-                elif classification.lower() in ['spam', 'junk', 'spam/junk']:
-                    classification = 'Spam/Junk'
-                
-                print(f"[SPAM ANALYSIS] Classification normalized: '{original_classification}' -> '{classification}'")
-                
-                result = SpamAnalysisResult(
-                    classification=classification,
+                return SpamAnalysisResult(
+                    classification=result_data.get('classification', 'Unknown'),
                     confidence=float(result_data.get('confidence', 0.0)),
-                    reason=result_data.get('reason', result_data.get('rationale', 'No reason provided'))
+                    reason=result_data.get('reason', 'No reason provided')
                 )
-                
-                print(f"[SPAM ANALYSIS] Final result: {result.to_dict()}")
-                return result
-                
-            except json.JSONDecodeError as e:
-                print(f"[SPAM ANALYSIS] JSON parsing failed: {e}, attempting fallback parsing")
+            except json.JSONDecodeError:
                 # Fallback parsing
                 is_spam = "spam" in result_text.lower() or "junk" in result_text.lower()
-                result = SpamAnalysisResult(
-                    classification="Spam/Junk" if is_spam else "Valid",
+                return SpamAnalysisResult(
+                    classification="Spam/Junk" if is_spam else "Not Spam",
                     confidence=0.7,
                     reason=result_text
                 )
-                print(f"[SPAM ANALYSIS] Fallback result: {result.to_dict()}")
-                return result
                 
         except Exception as e:
-            print(f"[SPAM ANALYSIS] Exception occurred: {e}")
+            print(f"Spam analysis failed: {e}")
             return SpamAnalysisResult(
                 classification="Error",
                 confidence=0.0,

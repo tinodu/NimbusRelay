@@ -277,6 +277,46 @@ class ServiceManager:
         except Exception as e:
             return {'error': str(e)}
     
+    def move_email(self, email_id: str, source_folder: str, target_folder: str) -> Dict[str, Any]:
+        """
+        Move email from source folder to target folder
+        
+        Args:
+            email_id: ID of email to move
+            source_folder: Source folder name
+            target_folder: Target folder name
+            
+        Returns:
+            Dict: Move operation result
+        """
+        try:
+            print(f"[SERVICE MANAGER] Moving email {email_id} from {source_folder} to {target_folder}")
+            
+            if not self.email_service.is_connected():
+                print("[SERVICE MANAGER] Email service not connected")
+                return {'error': 'Email service not connected. Please connect first.'}
+            
+            # Use the email service to move the email
+            success = self.email_service.move_email(email_id, source_folder, target_folder)
+            
+            if success:
+                print(f"[SERVICE MANAGER] Successfully moved email {email_id}")
+                return {
+                    'success': True,
+                    'message': f'Email moved from {source_folder} to {target_folder}',
+                    'email_id': email_id,
+                    'source_folder': source_folder,
+                    'target_folder': target_folder
+                }
+            else:
+                print(f"[SERVICE MANAGER] Failed to move email {email_id}")
+                return {'error': 'Failed to move email'}
+                
+        except Exception as e:
+            error_msg = str(e)
+            print(f"[SERVICE MANAGER] Exception in move_email: {error_msg}")
+            return {'error': error_msg}
+
     def is_connected(self) -> bool:
         """Check if both services are connected"""
         return (self.email_service.is_connected() and 

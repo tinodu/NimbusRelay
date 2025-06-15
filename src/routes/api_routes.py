@@ -162,3 +162,37 @@ def register_api_routes(app: Flask) -> None:
             
         except Exception as e:
             return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/move-email', methods=['POST'])
+    def move_email():
+        """Move email from one folder to another"""
+        try:
+            data = request.get_json()
+            print(f"[MOVE EMAIL API] Received request: {data}")
+            
+            if not data:
+                print("[MOVE EMAIL API] No data provided")
+                return jsonify({'error': 'No data provided'}), 400
+            
+            email_id = data.get('email_id')
+            source_folder = data.get('source_folder', 'INBOX')
+            target_folder = data.get('target_folder')
+            
+            if not email_id or not target_folder:
+                print(f"[MOVE EMAIL API] Missing required fields: email_id={email_id}, target_folder={target_folder}")
+                return jsonify({'error': 'Missing email_id or target_folder'}), 400
+            
+            print(f"[MOVE EMAIL API] Moving email {email_id} from {source_folder} to {target_folder}")
+            result = service_manager.move_email(email_id, source_folder, target_folder)
+            
+            if 'error' in result:
+                print(f"[MOVE EMAIL API] Error in move operation: {result['error']}")
+                return jsonify(result), 400
+            
+            print(f"[MOVE EMAIL API] Successfully moved email: {result}")
+            return jsonify(result)
+            
+        except Exception as e:
+            error_msg = str(e)
+            print(f"[MOVE EMAIL API] Exception in move_email: {error_msg}")
+            return jsonify({'error': error_msg}), 500
