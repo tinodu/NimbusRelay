@@ -70,115 +70,81 @@ class IMAPEmailService(IEmailService):
     
     def list_folders(self, include_hidden: bool = False) -> List[EmailFolder]:
         """
-        List all available email folders with visibility filtering
+        List only allowed email folders (limited to specific set)
         
         Args:
-            include_hidden: Whether to include hidden folders
+            include_hidden: Whether to include hidden folders (unused, for compatibility)
             
         Returns:
-            List[EmailFolder]: List of email folders
+            List[EmailFolder]: List of allowed email folders only
         """
         if not self.connection:
             return []
 
         try:
-            status, folders = self.connection.list()
+            # Define the allowed folders list
+            allowed_folders = [
+                'INBOX',
+                'INBOX.Drafts', 
+                'INBOX.Sent',
+                'INBOX.spam',
+                'INBOX.Trash',
+                'INBOX.Archive'
+            ]
+            
+            print(f"Limiting folder list to allowed folders: {allowed_folders}")
+            
             folder_list = []
             
-            print(f"IMAP LIST status: {status}")
-            print(f"Raw folder data count: {len(folders) if folders else 0}")
-            
-            if status != 'OK':
-                print(f"IMAP LIST failed with status: {status}")
-                return []
-            
-            # Debug: Print all raw folders to see what the server returns
-            print("=== ALL RAW FOLDERS FROM SERVER ===")
-            for i, folder in enumerate(folders):
-                folder_str = folder.decode('utf-8') if isinstance(folder, bytes) else str(folder)
-                print(f"{i+1}: {repr(folder_str)}")
-                # Check specifically for spam folder
-                if 'spam' in folder_str.lower():
-                    print(f"   ^ FOUND SPAM FOLDER: {folder_str}")
-            print("=== END RAW FOLDERS ===")
-
-            for folder in folders:
+            # Check each allowed folder to see if it exists on the server
+            for folder_name in allowed_folders:
                 try:
-                    folder_info = folder.decode('utf-8') if isinstance(folder, bytes) else str(folder)
-                    print(f"Processing folder info: {repr(folder_info)}")
-                    
-                    # Parse folder with attributes using injected parser
-                    parsed_folder = self.folder_parser.parse_folder_info(folder_info)
-                    
-                    # Special debug for spam folder
-                    if 'spam' in folder_info.lower():
-                        print(f"SPAM FOLDER DEBUG:")
-                        print(f"  Raw info: {repr(folder_info)}")
-                        print(f"  Parsed result: {parsed_folder}")
-                        if parsed_folder:
-                            print(f"  Name: {parsed_folder.name}")
-                            print(f"  Hidden: {parsed_folder.is_hidden}")
-                            print(f"  Selectable: {parsed_folder.is_selectable}")
-                    
-                    if not parsed_folder:
-                        print(f"Failed to parse folder: {folder_info}")
-                        continue
-                    
-                    # Skip hidden folders unless explicitly requested
-                    if parsed_folder.is_hidden and not include_hidden:
-                        print(f"Skipping hidden folder: {parsed_folder.name}")
-                        continue
-                    
-                    # Skip non-selectable folders
-                    if not parsed_folder.is_selectable:
-                        print(f"Skipping non-selectable folder: {parsed_folder.name}")
-                        continue
-                    
-                    # Use parsed folder directly since it's already an EmailFolder object
-                    folder_list.append(parsed_folder)
-                    print(f"Added folder: {parsed_folder}")
-                    
+                    # Try to select the folder to verify it exists
+                    test_status, _ = self.connection.select(folder_name, readonly=True)
+                    if test_status == 'OK':
+                        print(f"Found allowed folder on server: {folder_name}")
+                        
+                        # Create display name and folder type
+                        display_name = EmailFolderUtils.create_display_name(folder_name)
+                        folder_type = EmailFolderUtils.get_folder_type(folder_name)
+                        
+                        # Create EmailFolder object
+                        email_folder = EmailFolder(
+                            name=folder_name,
+                            display_name=display_name,
+                            type=folder_type,
+                            attributes=[],
+                            is_hidden=False,
+                            is_selectable=True,
+                            delimiter='.' if '.' in folder_name else '/'
+                        )
+                        folder_list.append(email_folder)
+                        print(f"Added allowed folder: {email_folder}")
+                    else:
+                        print(f"Allowed folder not found on server: {folder_name}")
+                        
                 except Exception as e:
-                    print(f"Failed to parse folder: {folder_info}, error: {e}")
+                    print(f"Failed to check allowed folder {folder_name}: {e}")
                     continue
             
-            # If no folders found, add standard ones
+            # If no allowed folders found, add at least INBOX
             if not folder_list:
-                folder_list = self._create_standard_folders()
-            
-            # Special check: ensure INBOX.spam is included if it exists on server
-            spam_folder_names = ['INBOX.spam', 'INBOX.Spam', 'INBOX.SPAM', 'spam', 'Spam', 'SPAM', 'Junk']
-            spam_found = any('spam' in f.name.lower() or 'junk' in f.name.lower() for f in folder_list)
-            
-            if not spam_found:
-                print("INBOX.spam not found in folder list, checking server directly...")
-                for spam_name in spam_folder_names:
-                    try:
-                        # Try to select the folder to see if it exists
-                        test_status, _ = self.connection.select(spam_name, readonly=True)
-                        if test_status == 'OK':
-                            print(f"Found spam folder on server: {spam_name}")
-                            # Create EmailFolder object for the spam folder
-                            spam_folder = EmailFolder(
-                                name=spam_name,
-                                display_name='Spam',
-                                type='spam',
-                                attributes=[],
-                                is_hidden=False,
-                                is_selectable=True,
-                                delimiter='.'
-                            )
-                            folder_list.append(spam_folder)
-                            print(f"Added spam folder: {spam_folder}")
-                            break
-                    except Exception as e:
-                        print(f"Failed to check spam folder {spam_name}: {e}")
-                        continue
+                print("No allowed folders found, adding default INBOX")
+                inbox_folder = EmailFolder(
+                    name='INBOX',
+                    display_name='Inbox',
+                    type='inbox',
+                    attributes=[],
+                    is_hidden=False,
+                    is_selectable=True,
+                    delimiter='/'
+                )
+                folder_list.append(inbox_folder)
             
             # Sort folders using utility function
             folder_list = EmailFolderUtils.sort_folders(folder_list)
             
-            print(f"Final folder list ({len(folder_list)} folders): {[f.name for f in folder_list]}")
+            print(f"Final allowed folder list ({len(folder_list)} folders): {[f.name for f in folder_list]}")
             return folder_list
             
         except Exception as e:
@@ -229,37 +195,41 @@ class IMAPEmailService(IEmailService):
             return []
     
     def _create_standard_folders(self) -> List[EmailFolder]:
-        """Create standard folders when none are found"""
-        print("No folders found, adding standard folders...")
+        """Create only allowed standard folders when none are found"""
+        print("No allowed folders found, creating standard allowed folders...")
         
-        # Try multiple variations of standard folder names
-        standard_folder_variations = [
-            ('INBOX', 'Inbox', 'inbox'),
-            ('SENT', 'Sent', 'INBOX.Sent', 'INBOX.SENT'),
-            ('DRAFTS', 'Drafts', 'INBOX.Drafts', 'INBOX.DRAFTS'),
-            ('SPAM', 'Spam', 'INBOX.spam', 'INBOX.Spam', 'INBOX.SPAM', 'Junk', 'INBOX.Junk'),
-            ('TRASH', 'Trash', 'INBOX.Trash', 'INBOX.TRASH', 'Deleted Items')
+        # Define allowed folders with variations to try
+        allowed_folder_variations = [
+            ('INBOX', ['INBOX']),
+            ('INBOX.Drafts', ['INBOX.Drafts', 'INBOX.Draft', 'Drafts', 'Draft']),
+            ('INBOX.Sent', ['INBOX.Sent', 'INBOX.SENT', 'Sent', 'SENT']),
+            ('INBOX.spam', ['INBOX.spam', 'INBOX.Spam', 'INBOX.SPAM', 'spam', 'Spam', 'SPAM', 'Junk', 'INBOX.Junk']),
+            ('INBOX.Trash', ['INBOX.Trash', 'INBOX.TRASH', 'Trash', 'TRASH', 'Deleted Items', 'INBOX.Deleted']),
+            ('INBOX.Archive', ['INBOX.Archive', 'INBOX.ARCHIVE', 'Archive', 'ARCHIVE'])
         ]
         
         folder_list = []
         
-        for folder_group in standard_folder_variations:
+        for primary_name, folder_variations in allowed_folder_variations:
             folder_added = False
-            primary_name = folder_group[0]
             
-            for folder_variant in folder_group:
+            for folder_variant in folder_variations:
                 try:
                     # Test if folder exists by trying to select it
                     test_status, _ = self.connection.select(folder_variant, readonly=True)
                     if test_status == 'OK':
+                        # Use the primary name for consistency
+                        display_name = EmailFolderUtils.create_display_name(primary_name)
+                        folder_type = EmailFolderUtils.get_folder_type(primary_name)
+                        
                         email_folder = EmailFolder(
-                            name=folder_variant,
-                            display_name=primary_name.title(),
-                            type=EmailFolderUtils.get_folder_type(primary_name),
+                            name=primary_name,  # Use primary name for consistency
+                            display_name=display_name,
+                            type=folder_type,
                             attributes=[],
                             is_hidden=False,
                             is_selectable=True,
-                            delimiter='.' if '.' in folder_variant else '/'
+                            delimiter='.' if '.' in primary_name else '/'
                         )
                         folder_list.append(email_folder)
                         print(f"Added standard folder: {folder_variant} (as {primary_name})")
