@@ -44,24 +44,39 @@ class ServiceManager:
             Dict: Connection status and messages
         """
         try:
+            print("=== Service Manager Connection Debug ===")
+            print(f"Config received: {list(config_dict.keys())}")
+            for key, value in config_dict.items():
+                if 'password' in key.lower() or 'key' in key.lower():
+                    print(f"{key}: {'*' * len(value) if value else 'EMPTY'}")
+                else:
+                    print(f"{key}: {value}")
+            print("=" * 40)
+            
             config = ConnectionConfig.from_dict(config_dict)
             self._connection_config = config
             
             # Connect to email service
+            print("Attempting to connect to email service...")
             email_connected = self.email_service.connect(config)
             if not email_connected:
+                print("Email service connection failed")
                 return {
                     'success': False,
                     'error': 'Failed to connect to email service'
                 }
+            print("Email service connected successfully")
             
             # Connect to AI service
+            print("Attempting to connect to AI service...")
             ai_connected = self.ai_service.connect(config)
             if not ai_connected:
+                print("AI service connection failed")
                 return {
                     'success': False,
                     'error': 'Failed to connect to AI service'
                 }
+            print("AI service connected successfully")
             
             return {
                 'success': True,
@@ -69,6 +84,7 @@ class ServiceManager:
             }
             
         except Exception as e:
+            print(f"Service manager connection error: {e}")
             return {
                 'success': False,
                 'error': str(e)
@@ -139,28 +155,71 @@ class ServiceManager:
             Dict: Spam analysis results
         """
         try:
-            if not self.ai_service.is_connected():
-                return {
-                    'error': 'AI service not connected. Please connect first.'
-                }
+            print(f"[SPAM ANALYSIS] Starting analysis for email: Subject='{email_data.get('subject', 'N/A')}', From='{email_data.get('from', 'N/A')}'")
             
-            # Convert dict to EmailMessage
+            if not self.ai_service.is_connected():
+                print("[SPAM ANALYSIS] AI service not connected, using mock analysis")
+                # Return a mock analysis for demo purposes when AI service is not connected
+                subject = email_data.get('subject', '').lower()
+                from_addr = email_data.get('from', '').lower()
+                
+                print(f"[SPAM ANALYSIS] Mock analysis inputs: subject='{subject}', from='{from_addr}'")
+                
+                # Simple rule-based spam detection for demo
+                is_spam = False
+                reason = "Mock analysis - AI service not connected"
+                
+                # Basic spam indicators
+                spam_keywords = ['free', 'urgent', 'limited time', 'act now', 'click here', 'guaranteed', 'prize']
+                suspicious_domains = ['spam.com', 'fake.org', 'scam.net']
+                
+                if any(keyword in subject for keyword in spam_keywords):
+                    is_spam = True
+                    reason = "Contains spam keywords in subject"
+                    print(f"[SPAM ANALYSIS] Mock: Detected spam keywords in subject")
+                elif any(domain in from_addr for domain in suspicious_domains):
+                    is_spam = True
+                    reason = "Suspicious sender domain"
+                    print(f"[SPAM ANALYSIS] Mock: Detected suspicious domain")
+                elif subject == '(no subject)' or subject == '':
+                    is_spam = True
+                    reason = "No subject line"
+                    print(f"[SPAM ANALYSIS] Mock: No subject line detected")
+                else:
+                    reason = "Appears to be legitimate email"
+                    print(f"[SPAM ANALYSIS] Mock: Email appears legitimate")
+                
+                result = {
+                    'classification': 'Spam/Junk' if is_spam else 'Valid',
+                    'confidence': 0.7 if is_spam else 0.8,
+                    'reason': reason + ' (Demo mode - configure Azure OpenAI for real analysis)'
+                }
+                
+                print(f"[SPAM ANALYSIS] Mock result: {result}")
+                return result
+
+            print("[SPAM ANALYSIS] Using AI service for analysis")
+            # Convert dict to EmailMessage with default values for missing fields
             email_obj = EmailMessage(
                 id=email_data.get('id', ''),
                 from_address=email_data.get('from', ''),
                 to_address=email_data.get('to', ''),
                 subject=email_data.get('subject', ''),
                 date=email_data.get('date', ''),
-                content_type=email_data.get('content_type', ''),
-                body=email_data.get('body', ''),
+                content_type=email_data.get('content_type', 'text/plain'),
+                body=email_data.get('body', email_data.get('preview', '')),
                 preview=email_data.get('preview', '')
             )
             
             result = self.ai_service.analyze_spam(email_obj)
-            return result.to_dict()
+            result_dict = result.to_dict()
+            print(f"[SPAM ANALYSIS] AI service result: {result_dict}")
+            return result_dict
             
         except Exception as e:
-            return {'error': str(e)}
+            error_msg = str(e)
+            print(f"[SPAM ANALYSIS] Exception occurred: {error_msg}")
+            return {'error': error_msg}
     
     def analyze_email(self, email_data: Dict[str, Any]) -> Dict[str, Any]:
         """

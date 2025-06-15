@@ -650,7 +650,11 @@ class NimbusRelayApp {
             if (result.error) {
                 if (resultDiv) resultDiv.innerHTML = `<div class="status-error" style="padding: 12px; border-radius: 6px;">Error: ${result.error}</div>`;
             } else {
-                const isSpam = result.classification === 'Spam/Junk';
+                // Check if classification indicates spam - handle multiple formats
+                const classification = result.classification || '';
+                const isSpam = classification.toLowerCase().includes('spam') || 
+                              classification.toLowerCase().includes('junk') ||
+                              classification === 'Spam/Junk';
                 const statusClass = isSpam ? 'spam' : 'not-spam';
                 if (resultDiv) {
                     resultDiv.innerHTML = `
@@ -782,8 +786,69 @@ class NimbusRelayApp {
      */
     async analyzeAllSpam() {
         this.showStatus('Analyzing all emails for spam...', 'info');
-        // Implementation for bulk spam analysis
         console.log('Analyzing all emails for spam...');
+        
+        try {
+            if (!this.emails || this.emails.length === 0) {
+                this.showStatus('No emails to analyze', 'warning');
+                return;
+            }
+            
+            let spamCount = 0;
+            let totalAnalyzed = 0;
+            const results = [];
+            
+            for (const email of this.emails) {
+                try {
+                    const response = await fetch('/api/analyze-spam', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(email)
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        totalAnalyzed++;
+                        
+                        // Check if classification indicates spam
+                        const isSpam = result.classification && 
+                                      (result.classification.toLowerCase().includes('spam') || 
+                                       result.classification.toLowerCase().includes('junk'));
+                        
+                        if (isSpam) {
+                            spamCount++;
+                        }
+                        
+                        results.push({
+                            email: email,
+                            result: { ...result, is_spam: isSpam }
+                        });
+                        
+                        // Update status with progress
+                        this.showStatus(`Analyzed ${totalAnalyzed}/${this.emails.length} emails...`, 'info');
+                    } else {
+                        const errorResult = await response.json().catch(() => ({ error: 'Unknown error' }));
+                        console.error('Failed to analyze email:', email.subject, 'Error:', errorResult);
+                        this.showStatus(`Error analyzing ${email.subject}: ${errorResult.error || 'Unknown error'}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('Error analyzing email:', email.subject, error);
+                }
+            }
+            
+            // Show final results
+            const message = `Spam analysis complete: ${spamCount} spam emails found out of ${totalAnalyzed} analyzed`;
+            this.showStatus(message, spamCount > 0 ? 'warning' : 'success');
+            
+            // Update UI to highlight spam emails
+            this.highlightSpamEmails(results);
+            
+        } catch (error) {
+            console.error('Error during spam analysis:', error);
+            this.showStatus('Failed to analyze emails for spam', 'error');
+        }
     }
     
     /**
@@ -896,6 +961,39 @@ class NimbusRelayApp {
     }
     
     /**
+     * Highlight spam emails in the UI
+     */
+    highlightSpamEmails(analysisResults) {
+        analysisResults.forEach(({ email, result }) => {
+            if (result.is_spam) {
+                const emailElement = document.querySelector(`.email-item[data-email-id="${email.id}"]`);
+                if (emailElement) {
+                    emailElement.classList.add('spam-detected');
+                    
+                    // Add spam indicator
+                    const spamIndicator = document.createElement('span');
+                    spamIndicator.className = 'spam-indicator';
+                    spamIndicator.innerHTML = '🚨 SPAM';
+                    spamIndicator.style.cssText = `
+                        color: #EF5350;
+                        font-weight: bold;
+                        font-size: 10px;
+                        background: rgba(239, 83, 80, 0.1);
+                        padding: 2px 6px;
+                        border-radius: 4px;
+                        margin-left: 8px;
+                    `;
+                    
+                    const subjectElement = emailElement.querySelector('.email-subject');
+                    if (subjectElement && !subjectElement.querySelector('.spam-indicator')) {
+                        subjectElement.appendChild(spamIndicator);
+                    }
+                }
+            }
+        });
+    }
+    
+    /**
      * Show demo data when no real data is available
      */
     showDemoData() {
@@ -915,16 +1013,42 @@ class NimbusRelayApp {
             {
                 id: '1',
                 from: 'demo@example.com',
+                to: 'user@nimbusrelay.com',
                 subject: 'Welcome to NimbusRelay',
                 preview: 'Thank you for trying our Imperial Purple email management solution...',
-                date: new Date().toLocaleDateString()
+                date: new Date().toLocaleDateString(),
+                content_type: 'text/plain',
+                body: 'Thank you for trying our Imperial Purple email management solution. We hope you enjoy the experience and find it useful for managing your emails efficiently.',
             },
             {
                 id: '2', 
                 from: 'support@nimbusrelay.com',
+                to: 'user@nimbusrelay.com',
                 subject: 'Getting Started Guide',
                 preview: 'Here are some tips to help you make the most of your email experience...',
-                date: new Date().toLocaleDateString()
+                date: new Date().toLocaleDateString(),
+                content_type: 'text/plain',
+                body: 'Here are some tips to help you make the most of your email experience with NimbusRelay. Please refer to our documentation for more detailed information.',
+            },
+            {
+                id: '3', 
+                from: 'spam@fake.org',
+                to: 'user@nimbusrelay.com',
+                subject: 'FREE PRIZE - ACT NOW!',
+                preview: 'You have won a guaranteed prize! Click here to claim your free reward...',
+                date: new Date().toLocaleDateString(),
+                content_type: 'text/html',
+                body: 'URGENT! You have won a guaranteed prize worth $1000! This is a limited time offer, act now! Click here to claim your free reward immediately!',
+            },
+            {
+                id: '4', 
+                from: 'noreply@scam.net',
+                to: 'user@nimbusrelay.com',
+                subject: '(no subject)',
+                preview: 'Urgent message regarding your account...',
+                date: new Date().toLocaleDateString(),
+                content_type: 'text/plain',
+                body: 'Your account needs immediate attention. Please click the link below to verify your identity.',
             }
         ];
         

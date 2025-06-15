@@ -1,49 +1,50 @@
 @echo off
+chcp 65001 >nul
 REM NimbusRelay Quick Start Script
 REM Imperial Purple Email Management Application
 
 echo.
-echo  🌩️  NimbusRelay - Minimalistic Email Management
-echo  📧  Imperial Purple Theme - Grandeur ^& Nobility
+echo  [*]  NimbusRelay - Minimalistic Email Management
+echo  [+]  Imperial Purple Theme - Grandeur ^& Nobility
 echo ================================================
 
 REM Check if Python is available
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ❌ Python is not installed or not in PATH
-    echo    Please install Python 3.9+ and try again
+    echo [X] Python is not installed or not in PATH
+    echo     Please install Python 3.9+ and try again
     pause
     exit /b 1
 )
 
-echo ✅ Python detected
+echo [OK] Python detected
 
 REM Check if requirements.txt exists
 if not exist requirements.txt (
-    echo ❌ requirements.txt not found
-    echo    Please ensure you're in the NimbusRelay directory
+    echo [X] requirements.txt not found
+    echo     Please ensure you're in the NimbusRelay directory
     pause
     exit /b 1
 )
 
-echo ✅ Requirements file found
+echo [OK] Requirements file found
 
 REM Install dependencies
 echo.
-echo 📦 Installing dependencies...
+echo [*] Installing dependencies...
 pip install -r requirements.txt
 if %errorlevel% neq 0 (
-    echo ❌ Failed to install dependencies
+    echo [X] Failed to install dependencies
     pause
     exit /b 1
 )
 
-echo ✅ Dependencies installed
+echo [OK] Dependencies installed
 
 REM Check if .env exists, if not create template
 if not exist .env (
     echo.
-    echo 📝 Creating .env template file...
+    echo [*] Creating .env template file...
     echo # NimbusRelay Configuration > .env
     echo # Email Configuration >> .env
     echo IMAP_SERVER= >> .env
@@ -60,27 +61,27 @@ if not exist .env (
     echo # Application Configuration >> .env
     echo SECRET_KEY=nimbus-relay-imperial-secret >> .env
     
-    echo ✅ .env template created
-    echo    You can configure your credentials via the web interface
+    echo [OK] .env template created
+    echo      You can configure your credentials via the web interface
 )
 
 REM Run tests to verify everything is working
 echo.
-echo 🧪 Running quick validation tests...
+echo [*] Running quick validation tests...
 python -m pytest src\tests\test_simple.py -v --tb=short
 if %errorlevel% neq 0 (
-    echo ⚠️  Some tests failed, but application may still work
+    echo [!] Some tests failed, but application may still work
 ) else (
-    echo ✅ All tests passed
+    echo [OK] All tests passed
 )
 
 REM Start the application
 echo.
-echo 🚀 Starting NimbusRelay application...
+echo [*] Starting NimbusRelay application...
 echo.
-echo    📧 Imperial Purple Email Management
-echo    🌐 Opening at: http://localhost:5000
-echo    ⚡ Press Ctrl+C to stop the server
+echo     [+] Imperial Purple Email Management
+echo     [*] Opening at: http://localhost:5000
+echo     [!] Press Ctrl+C to stop the server
 echo.
 echo ================================================
 echo.
@@ -89,5 +90,5 @@ REM Start the Flask application
 python main.py
 
 echo.
-echo 👋 NimbusRelay stopped. Thank you for using Imperial Purple email management!
+echo [*] NimbusRelay stopped. Thank you for using Imperial Purple email management!
 pause

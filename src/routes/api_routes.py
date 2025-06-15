@@ -110,15 +110,26 @@ def register_api_routes(app: Flask) -> None:
         """Analyze email for spam detection"""
         try:
             email_data = request.get_json()
+            print(f"[SPAM API] Received request with email data keys: {list(email_data.keys()) if email_data else 'None'}")
+            
+            if not email_data:
+                print("[SPAM API] No email data provided")
+                return jsonify({'error': 'No email data provided'}), 400
+            
+            print(f"[SPAM API] Processing email: Subject='{email_data.get('subject', 'N/A')}', From='{email_data.get('from', 'N/A')}'")
             result = service_manager.analyze_spam(email_data)
             
             if 'error' in result:
+                print(f"[SPAM API] Error in analysis: {result['error']}")
                 return jsonify(result), 400
             
+            print(f"[SPAM API] Returning result: {result}")
             return jsonify(result)
             
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            error_msg = str(e)
+            print(f"[SPAM API] Exception in analyze_spam: {error_msg}")
+            return jsonify({'error': error_msg}), 500
     
     @app.route('/api/analyze-email', methods=['POST'])
     def analyze_email():
