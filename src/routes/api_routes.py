@@ -196,3 +196,22 @@ def register_api_routes(app: Flask) -> None:
             error_msg = str(e)
             print(f"[MOVE EMAIL API] Exception in move_email: {error_msg}")
             return jsonify({'error': error_msg}), 500
+    
+    @app.route('/api/debug/folders')
+    def debug_folders():
+        """Debug endpoint to get detailed folder information"""
+        try:
+            print("[DEBUG FOLDERS] Getting detailed folder information...")
+            
+            # Get detailed folder debug info from email service
+            if hasattr(service_manager.email_service, 'debug_all_folders'):
+                debug_info = service_manager.email_service.debug_all_folders()
+                print(f"[DEBUG FOLDERS] Debug info: {debug_info}")
+                return jsonify(debug_info)
+            else:
+                return jsonify({'error': 'Debug method not available'}), 400
+                
+        except Exception as e:
+            error_msg = str(e)
+            print(f"[DEBUG FOLDERS] Exception: {error_msg}")
+            return jsonify({'error': error_msg}), 500
