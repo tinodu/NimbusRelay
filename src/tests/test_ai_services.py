@@ -72,7 +72,7 @@ class TestAzureOpenAIServiceDetailed:
         
         test_cases = [
             ('{"classification": "Spam", "confidence": 0.95, "reason": "Obvious spam"}', 'Spam', 0.95),
-            ('{"classification": "Not Spam", "confidence": 0.85, "reason": "Legitimate"}', 'Not Spam', 0.85),
+            ('{"classification": "Valid", "confidence": 0.85, "reason": "Legitimate"}', 'Valid', 0.85),
             ('{"classification": "Uncertain", "confidence": 0.5, "reason": "Unclear"}', 'Uncertain', 0.5),
         ]
         
@@ -115,7 +115,7 @@ class TestAzureOpenAIServiceDetailed:
         result = service.analyze_spam(email)
         
         # Assert - Should return fallback parsing result, not raise exception
-        assert result.classification in ["Spam/Junk", "Not Spam"]
+        assert result.classification in ["Spam/Junk", "Valid"]
         assert result.confidence == 0.7
         assert result.reason == 'Invalid JSON response'
     
@@ -319,7 +319,7 @@ class TestSpamAnalysisScenarios:
         mock_response = Mock()
         mock_response.choices = [Mock()]
         mock_response.choices[0].message.content = json.dumps({
-            "classification": "Not Spam",
+            "classification": "Valid",
             "confidence": 0.92,
             "reason": "Professional tone, legitimate business request from known domain"
         })
@@ -329,7 +329,7 @@ class TestSpamAnalysisScenarios:
         result = service.analyze_spam(legit_email)
         
         # Assert
-        assert result.classification == "Not Spam"
+        assert result.classification == "Valid"
         assert result.confidence >= 0.8
         assert "legitimate" in result.reason.lower() or "professional" in result.reason.lower()
     

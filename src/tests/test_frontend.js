@@ -224,7 +224,7 @@ describe('NimbusRelayApp', () => {
 
         test('should analyze email for spam', async () => {
             const mockSpamResult = {
-                classification: 'Not Spam',
+                classification: 'Valid',
                 confidence: 0.9,
                 reason: 'Legitimate email'
             };

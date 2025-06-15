@@ -411,7 +411,7 @@ class TestAzureAIService:
         # Mock API response
         mock_response = Mock()
         mock_response.choices = [Mock()]
-        mock_response.choices[0].message.content = '{"classification": "Not Spam", "confidence": 0.9, "reason": "Legitimate email"}'
+        mock_response.choices[0].message.content = '{"classification": "Valid", "confidence": 0.9, "reason": "Legitimate email"}'
         mock_client.chat.completions.create.return_value = mock_response
         
         email_obj = EmailMessage(
@@ -428,7 +428,7 @@ class TestAzureAIService:
         result = service.analyze_spam(email_obj)
 
         # Assert
-        assert result.classification == 'Not Spam'
+        assert result.classification == 'Valid'
         assert result.confidence == 0.9
         assert 'Legitimate email' in result.reason
 

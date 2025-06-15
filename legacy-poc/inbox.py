@@ -201,7 +201,7 @@ for i, email_id in enumerate(reversed(email_ids), 1):
                 move_email_to_junk(mailbox, email_id)
                 print(f"Email {len(email_ids) - i + 1} moved to Junk.")
             else:
-                print(f"Email {len(email_ids) - i + 1} is not spam.")
+                print(f"Email {len(email_ids) - i + 1} is valid.")
             success = True
         except Exception as e:
             print(f"Success {success}. Retry {retry}. Failed to parse classification response: {e}")

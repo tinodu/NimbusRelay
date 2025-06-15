@@ -361,7 +361,7 @@ class TestServiceManagerIntegrationScenarios:
         email_service.get_emails.return_value = emails
         
         # Setup AI analysis
-        spam_result = SpamAnalysisResult('Not Spam', 0.85, 'Legitimate business email')
+        spam_result = SpamAnalysisResult('Valid', 0.85, 'Legitimate business email')
         ai_service.analyze_spam.return_value = spam_result
         
         analysis_result = 'This email contains an urgent request from a client requiring immediate attention'
@@ -385,7 +385,7 @@ class TestServiceManagerIntegrationScenarios:
         
         # 4. Analyze for spam
         spam_analysis = manager.analyze_spam(retrieved_emails['emails'][0])
-        assert spam_analysis['classification'] == 'Not Spam'
+        assert spam_analysis['classification'] == 'Valid'
         
         # 5. Analyze email content
         content_analysis = manager.analyze_email(retrieved_emails['emails'][0])
@@ -447,7 +447,7 @@ class TestServiceManagerIntegrationScenarios:
         
         # Setup AI responses
         spam_results = [
-            SpamAnalysisResult('Not Spam', 0.8, 'Legitimate'),
+            SpamAnalysisResult('Valid', 0.8, 'Legitimate'),
             SpamAnalysisResult('Spam', 0.9, 'Suspicious')
         ]
         ai_service.analyze_spam.side_effect = spam_results
@@ -460,7 +460,7 @@ class TestServiceManagerIntegrationScenarios:
         
         # Verify results
         assert len(results) == 2
-        assert results[0]['classification'] == 'Not Spam'
+        assert results[0]['classification'] == 'Valid'
         assert results[1]['classification'] == 'Spam'
         assert ai_service.analyze_spam.call_count == 2
 

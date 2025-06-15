@@ -200,6 +200,7 @@ class AzureAIService(IAIService):
             # Parse JSON response
             try:
                 result_data = json.loads(result_text)
+                print("Spam analysis raw result:", json.dumps(result_data, indent=2))
                 return SpamAnalysisResult(
                     classification=result_data.get('classification', 'Unknown'),
                     confidence=float(result_data.get('confidence', 0.0)),
@@ -209,7 +210,7 @@ class AzureAIService(IAIService):
                 # Fallback parsing
                 is_spam = "spam" in result_text.lower() or "junk" in result_text.lower()
                 return SpamAnalysisResult(
-                    classification="Spam/Junk" if is_spam else "Not Spam",
+                    classification="Spam/Junk" if is_spam else "Valid",
                     confidence=0.7,
                     reason=result_text
                 )
