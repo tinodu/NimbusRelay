@@ -1082,6 +1082,70 @@ console.log('[DEBUG] Sanitized HTML body:', this.sanitizeHtml(email.html_body));
                             overflow: hidden;
                             box-sizing: border-box;
                         ">
+                            <!-- Email fields section -->
+                            <div style="
+                                margin-bottom: 20px;
+                                display: flex;
+                                flex-direction: column;
+                                gap: 12px;
+                            ">
+                                <div style="display: flex; align-items: center; gap: 16px;">
+                                    <label style="color: #A88EBC; width: 80px; text-align: right;">To:</label>
+                                    <input type="email" id="draftTo" style="
+                                        flex: 1;
+                                        padding: 8px 12px;
+                                        background: #0F0F0F;
+                                        border: 1px solid rgba(75, 0, 130, 0.3);
+                                        border-radius: 4px;
+                                        color: #E6E6E6;
+                                        font-size: 14px;
+                                        outline: none;
+                                        transition: border-color 0.2s ease;
+                                    " onfocus="this.style.borderColor='#A88EBC'" onblur="this.style.borderColor='rgba(75, 0, 130, 0.3)'" value="${this.escapeHtml(email.from || '')}" />
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 16px;">
+                                    <label style="color: #A88EBC; width: 80px; text-align: right;">Cc:</label>
+                                    <input type="email" id="draftCc" style="
+                                        flex: 1;
+                                        padding: 8px 12px;
+                                        background: #0F0F0F;
+                                        border: 1px solid rgba(75, 0, 130, 0.3);
+                                        border-radius: 4px;
+                                        color: #E6E6E6;
+                                        font-size: 14px;
+                                        outline: none;
+                                        transition: border-color 0.2s ease;
+                                    " onfocus="this.style.borderColor='#A88EBC'" onblur="this.style.borderColor='rgba(75, 0, 130, 0.3)'" />
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 16px;">
+                                    <label style="color: #A88EBC; width: 80px; text-align: right;">Bcc:</label>
+                                    <input type="email" id="draftBcc" style="
+                                        flex: 1;
+                                        padding: 8px 12px;
+                                        background: #0F0F0F;
+                                        border: 1px solid rgba(75, 0, 130, 0.3);
+                                        border-radius: 4px;
+                                        color: #E6E6E6;
+                                        font-size: 14px;
+                                        outline: none;
+                                        transition: border-color 0.2s ease;
+                                    " onfocus="this.style.borderColor='#A88EBC'" onblur="this.style.borderColor='rgba(75, 0, 130, 0.3)'" />
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 16px;">
+                                    <label style="color: #A88EBC; width: 80px; text-align: right;">Subject:</label>
+                                    <input type="text" id="draftSubject" style="
+                                        flex: 1;
+                                        padding: 8px 12px;
+                                        background: #0F0F0F;
+                                        border: 1px solid rgba(75, 0, 130, 0.3);
+                                        border-radius: 4px;
+                                        color: #E6E6E6;
+                                        font-size: 14px;
+                                        outline: none;
+                                        transition: border-color 0.2s ease;
+                                    " onfocus="this.style.borderColor='#A88EBC'" onblur="this.style.borderColor='rgba(75, 0, 130, 0.3)'" value="${email.subject ? 'Re: ' + this.escapeHtml(email.subject) : ''}" />
+                                </div>
+                            </div>
                             <textarea id="draftRichEditor" style="
                                 flex: 1;
                                 width: 100%;
@@ -1128,6 +1192,10 @@ console.log('[DEBUG] Sanitized HTML body:', this.sanitizeHtml(email.html_body));
                 if (editor) {
                     editor.value = combinedContent;
                     editor.focus();
+                    // Set cursor to the beginning of the text
+                    editor.setSelectionRange(0, 0);
+                    // Scroll to the top to show the cursor
+                    editor.scrollTop = 0;
                 }
 
                 // Close modal function
@@ -1142,8 +1210,25 @@ console.log('[DEBUG] Sanitized HTML body:', this.sanitizeHtml(email.html_body));
                 if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
                 if (sendBtn) {
                     sendBtn.addEventListener('click', () => {
-                        // TODO: Implement send functionality
-                        console.log('Sending draft:', editor.value);
+                        // Get email field values
+                        const toField = document.getElementById('draftTo');
+                        const ccField = document.getElementById('draftCc');
+                        const bccField = document.getElementById('draftBcc');
+                        const subjectField = document.getElementById('draftSubject');
+                        
+                        const emailData = {
+                            to: toField ? toField.value : '',
+                            cc: ccField ? ccField.value : '',
+                            bcc: bccField ? bccField.value : '',
+                            subject: subjectField ? subjectField.value : '',
+                            body: editor ? editor.value : ''
+                        };
+                        
+                        // TODO: Implement actual send functionality via API
+                        console.log('Sending draft with email data:', emailData);
+                        
+                        // Show success message
+                        this.showStatus('Draft prepared successfully', 'success');
                         closeModal();
                     });
                 }
