@@ -113,9 +113,13 @@ class IMAPEmailService(IEmailService):
             # Check each allowed folder to see if it exists on the server
             for folder_name in allowed_folders:
                 try:
+                    # Log connection id and folder being checked
+                    print(f"[DEBUG] Checking folder: {folder_name}, connection id: {id(self.connection)}")
                     # Try to select the folder to verify it exists
                     try:
+                        print(f"[DEBUG] Sending EXAMINE (readonly=True) for {folder_name} on connection id: {id(self.connection)}")
                         test_status, test_response = self.connection.select(folder_name, readonly=True)
+                        print(f"[DEBUG] EXAMINE response for {folder_name}: status={test_status}, response={test_response!r}")
                         # Check for suspicious non-IMAP responses
                         if isinstance(test_response, bytes):
                             test_response_str = test_response.decode(errors='ignore')
@@ -139,14 +143,16 @@ class IMAPEmailService(IEmailService):
                             print(f"Suspicious or invalid IMAP response for {folder_name}: {test_status}, {test_response_str}")
                             raise Exception(f"Non-IMAP response: {test_response_str}")
                     except Exception as e:
-                        print(f"EXAMINE failed for {folder_name} with error: {e}, resetting connection and retrying with SELECT (readonly=False)")
+                        print(f"[DEBUG] EXAMINE failed for {folder_name} with error: {e}, connection id: {id(self.connection)}")
                         # Reset the connection to avoid protocol state issues
                         self.disconnect()
                         if not self.connect(self.config):
-                            print(f"Reconnect failed after EXAMINE error for {folder_name}")
+                            print(f"[DEBUG] Reconnect failed after EXAMINE error for {folder_name}")
                             continue  # Skip this folder
                         try:
+                            print(f"[DEBUG] Retrying SELECT (readonly=False) for {folder_name} on connection id: {id(self.connection)}")
                             test_status, test_response = self.connection.select(folder_name, readonly=False)
+                            print(f"[DEBUG] SELECT response for {folder_name}: status={test_status}, response={test_response!r}")
                             if isinstance(test_response, bytes):
                                 test_response_str = test_response.decode(errors='ignore')
                             else:
@@ -155,10 +161,10 @@ class IMAPEmailService(IEmailService):
                                 print(f"Suspicious or invalid IMAP response for {folder_name} (SELECT): {test_status}, {test_response_str}")
                                 continue  # Skip this folder
                         except Exception as e2:
-                            print(f"SELECT also failed for {folder_name} with error: {e2}")
+                            print(f"[DEBUG] SELECT also failed for {folder_name} with error: {e2}, connection id: {id(self.connection)}")
                             continue  # Skip this folder
                     if test_status == 'OK':
-                        print(f"Found allowed folder on server: {folder_name}")
+                        print(f"[DEBUG] Found allowed folder on server: {folder_name}, connection id: {id(self.connection)}")
                         
                         # Create display name and folder type
                         display_name = EmailFolderUtils.create_display_name(folder_name)
@@ -175,9 +181,9 @@ class IMAPEmailService(IEmailService):
                             delimiter='.' if '.' in folder_name else '/'
                         )
                         folder_list.append(email_folder)
-                        print(f"Added allowed folder: {email_folder}")
+                        print(f"[DEBUG] Added allowed folder: {email_folder}, connection id: {id(self.connection)}")
                     else:
-                        print(f"Allowed folder not found on server: {folder_name}")
+                        print(f"[DEBUG] Allowed folder not found on server: {folder_name}, connection id: {id(self.connection)}")
                         
                 except Exception as e:
                     print(f"Failed to check allowed folder {folder_name}: {e}")

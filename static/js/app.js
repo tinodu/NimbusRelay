@@ -822,9 +822,11 @@ class NimbusRelayApp {
     async analyzeEmailSpam(email) {
         try {
             const button = document.getElementById('analyzeSpamSingleBtn');
+            let originalContent;
             if (button) {
                 button.disabled = true;
-                button.innerHTML = '🛡️';
+                originalContent = button.innerHTML;
+                // Do not change button.innerHTML; keep icon + text visible
             }
             this.showToolResultBox('<div class="loading"><div class="spinner"></div>Analyzing for spam...</div>');
             
@@ -840,7 +842,7 @@ class NimbusRelayApp {
             
             if (button) {
                 button.disabled = false;
-                button.innerHTML = '🛡️';
+                // No need to restore innerHTML; it was never changed
             }
             
             if (result.error) {
@@ -879,7 +881,8 @@ class NimbusRelayApp {
             const button = document.getElementById('analyzeEmailBtn');
             if (button) {
                 button.disabled = true;
-                button.innerHTML = '🔍';
+                var originalContent = button.innerHTML;
+                // Do not change button.innerHTML; keep icon + text visible
             }
             this.showToolResultBox('<div class="loading"><div class="spinner"></div>Analyzing email content...</div>');
             
@@ -895,7 +898,7 @@ class NimbusRelayApp {
             
             if (button) {
                 button.disabled = false;
-                button.innerHTML = '🔍';
+                // No need to restore innerHTML; it was never changed
             }
             
             if (result.error) {
@@ -938,7 +941,8 @@ class NimbusRelayApp {
             const button = document.getElementById('generateDraftBtn');
             if (button) {
                 button.disabled = true;
-                button.innerHTML = '✍️';
+                var originalContent = button.innerHTML;
+                // Do not change button.innerHTML; keep icon + text visible
             }
             this.showToolResultBox('<div class="loading"><div class="spinner"></div>Generating draft response...</div>');
             
@@ -970,7 +974,7 @@ class NimbusRelayApp {
             
             if (button) {
                 button.disabled = false;
-                button.innerHTML = '✍️';
+                // No need to restore innerHTML; it was never changed
             }
             
             if (draftResult.error) {
@@ -988,7 +992,7 @@ class NimbusRelayApp {
             const button = document.getElementById('generateDraftBtn');
             if (button) {
                 button.disabled = false;
-                button.innerHTML = '✍️';
+                // No need to restore innerHTML; it was never changed
             }
             this.showToolResultBox('<div class="status-error" style="padding: 12px; border-radius: 6px;">Failed to generate draft</div>');
         }

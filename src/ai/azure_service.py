@@ -37,141 +37,59 @@ class AzureAIService(IAIService):
         Returns:
             bool: Success status
         """
+        # Validate required configuration
+        print(f"Attempting to connect to Azure OpenAI...")
+        print(f"Endpoint: {config.azure_endpoint}")
+        print(f"Deployment: {config.azure_deployment}")
+        print(f"API Version: {config.azure_api_version}")
+        print(f"API Key present: {'Yes' if config.azure_api_key else 'No'}")
+        
+        if not config.azure_endpoint:
+            print("AI service connection failed: Missing Azure OpenAI endpoint")
+            return False
+        if not config.azure_api_key:
+            print("AI service connection failed: Missing Azure OpenAI API key")
+            return False
+        if not config.azure_deployment:
+            print("AI service connection failed: Missing Azure OpenAI deployment name")
+            return False
+        
+        self.config = config
+        
+        # Initialize Azure OpenAI client with explicit parameters only
+        print("Creating AzureOpenAI client...")
+        import inspect
+        print("Attempting method 1: Environment variable initialization...")
+        import os
+
+        # Set required environment variables
+        os.environ['OPENAI_API_TYPE'] = 'azure'
+        os.environ['OPENAI_API_VERSION'] = config.azure_api_version
+        os.environ['AZURE_OPENAI_ENDPOINT'] = config.azure_endpoint
+        os.environ['AZURE_OPENAI_API_KEY'] = config.azure_api_key
+
+        print(f"AzureOpenAI class: {AzureOpenAI}")
+        print(f"AzureOpenAI __init__ signature: {inspect.signature(AzureOpenAI.__init__)}")
+        self.client = AzureOpenAI()
+        print("Method 1 successful - using environment variables")
+        
+
+        print("AI service client created successfully")
+        
+        # Test the connection with a simple call
+        print("Testing connection with a simple API call...")
         try:
-            # Validate required configuration
-            print(f"Attempting to connect to Azure OpenAI...")
-            print(f"Endpoint: {config.azure_endpoint}")
-            print(f"Deployment: {config.azure_deployment}")
-            print(f"API Version: {config.azure_api_version}")
-            print(f"API Key present: {'Yes' if config.azure_api_key else 'No'}")
-            
-            if not config.azure_endpoint:
-                print("AI service connection failed: Missing Azure OpenAI endpoint")
-                return False
-            if not config.azure_api_key:
-                print("AI service connection failed: Missing Azure OpenAI API key")
-                return False
-            if not config.azure_deployment:
-                print("AI service connection failed: Missing Azure OpenAI deployment name")
-                return False
-            
-            self.config = config
-            
-            # Initialize Azure OpenAI client with explicit parameters only
-            print("Creating AzureOpenAI client...")
-            
-            try:
-                # Method 1: Set environment variables and use default initialization
-                print("Attempting method 1: Environment variable initialization...")
-                import os
-                
-                # Set required environment variables
-                os.environ['OPENAI_API_TYPE'] = 'azure'
-                os.environ['OPENAI_API_VERSION'] = config.azure_api_version
-                os.environ['AZURE_OPENAI_ENDPOINT'] = config.azure_endpoint
-                os.environ['AZURE_OPENAI_API_KEY'] = config.azure_api_key
-                
-                # Clear any proxy environment variables that might interfere
-                proxy_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'ALL_PROXY', 'all_proxy']
-                original_proxies = {}
-                for var in proxy_vars:
-                    if var in os.environ:
-                        original_proxies[var] = os.environ[var]
-                        print(f"Temporarily removing proxy variable: {var}")
-                        del os.environ[var]
-                
-                try:
-                    # Defensive: Remove any proxies key from environment or kwargs before client creation
-                    import inspect
-                    import os
-
-                    # Remove proxies from environment if present
-                    if "OPENAI_PROXY" in os.environ:
-                        print("Removing OPENAI_PROXY from environment")
-                        del os.environ["OPENAI_PROXY"]
-
-                    # Remove proxies from AzureOpenAI.__init__ kwargs if present (future-proof)
-                    azureopenai_init = AzureOpenAI.__init__
-                    if "proxies" in inspect.signature(azureopenai_init).parameters:
-                        print("AzureOpenAI.__init__ accepts proxies, but will not pass it.")
-
-                    self.client = AzureOpenAI()
-                    print("Method 1 successful - using environment variables")
-                    
-                except Exception as env_error:
-                    print(f"Environment variable method failed: {env_error}")
-                    
-                    # Method 2: Try with positional arguments instead of keyword arguments
-                    print("Attempting method 2: Positional arguments...")
-                    try:
-                        # Create a simple client configuration
-                        from openai._client import AzureOpenAI as DirectAzureOpenAI
-                        self.client = DirectAzureOpenAI(
-                            azure_endpoint=config.azure_endpoint,
-                            api_key=config.azure_api_key,
-                            api_version=config.azure_api_version
-                        )
-                        print("Method 2 successful - direct client import")
-                        
-                    except Exception as direct_error:
-                        print(f"Direct import method failed: {direct_error}")
-                        
-                        # Method 3: Try creating the client with a custom httpx client
-                        print("Attempting method 3: Custom HTTP client...")
-                        try:
-                            import httpx
-                            
-                            # Create a custom HTTP client without proxy support
-                            # Defensive: Ensure no proxies argument is passed to httpx.Client or AzureOpenAI
-                            http_client = httpx.Client()
-                            if hasattr(http_client, "proxies"):
-                                print("Warning: http_client has proxies attribute, removing for safety")
-                                delattr(http_client, "proxies")
-
-                            self.client = AzureOpenAI(
-                                azure_endpoint=config.azure_endpoint,
-                                api_key=config.azure_api_key,
-                                api_version=config.azure_api_version,
-                                http_client=http_client
-                            )
-                            print("Method 3 successful - custom HTTP client")
-                            
-                        except Exception as custom_error:
-                            print(f"Custom HTTP client method failed: {custom_error}")
-                            raise env_error  # Raise the original error
-                            
-                finally:
-                    # Restore proxy environment variables
-                    for var, value in original_proxies.items():
-                        os.environ[var] = value
-                        print(f"Restored proxy variable: {var}")
-                        
-            except Exception as init_error:
-                print(f"All initialization attempts failed: {init_error}")
-                raise init_error
-            
-            print("AI service client created successfully")
-            
-            # Test the connection with a simple call
-            print("Testing connection with a simple API call...")
-            try:
-                test_response = self.client.chat.completions.create(
-                    model=config.azure_deployment,
-                    messages=[{"role": "user", "content": "Hello"}],
-                    max_tokens=5,
-                    temperature=0
-                )
-                print("AI service connection test successful!")
-                return True
-            except Exception as test_error:
-                print(f"AI service connection test failed: {test_error}")
-                print(f"Test error type: {type(test_error).__name__}")
-                return False
-                
-        except Exception as e:
-            print(f"AI service connection failed during initialization: {e}")
-            print(f"Error type: {type(e).__name__}")
-            self.client = None
+            test_response = self.client.chat.completions.create(
+                model=config.azure_deployment,
+                messages=[{"role": "user", "content": "Hello"}],
+                max_tokens=5,
+                temperature=0
+            )
+            print("AI service connection test successful!")
+            return True
+        except Exception as test_error:
+            print(f"AI service connection test failed: {test_error}")
+            print(f"Test error type: {type(test_error).__name__}")
             return False
     
     def is_connected(self) -> bool:
@@ -218,10 +136,16 @@ class AzureAIService(IAIService):
             try:
                 result_data = json.loads(result_text)
                 print("Spam analysis raw result:", json.dumps(result_data, indent=2))
+                # Map "rationale" to "reason" if "reason" is missing
+                reason = result_data.get('reason')
+                if not reason and 'rationale' in result_data:
+                    reason = result_data['rationale']
+                if not reason:
+                    reason = 'No reason provided'
                 return SpamAnalysisResult(
                     classification=result_data.get('classification', 'Unknown'),
                     confidence=float(result_data.get('confidence', 0.0)),
-                    reason=result_data.get('reason', 'No reason provided')
+                    reason=reason
                 )
             except json.JSONDecodeError:
                 # Fallback parsing
