@@ -41,9 +41,11 @@ class EmailMessage:
     subject: str
     date: str
     content_type: str
-    body: Optional[str]
+    body: Optional[str]  # legacy, for backward compatibility
     preview: str
-    
+    text_body: Optional[str] = None
+    html_body: Optional[str] = None
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization"""
         return {
@@ -54,7 +56,9 @@ class EmailMessage:
             'date': self.date,
             'content_type': self.content_type,
             'body': self.body,
-            'preview': self.preview
+            'preview': self.preview,
+            'text_body': self.text_body,
+            'html_body': self.html_body
         }
 
 

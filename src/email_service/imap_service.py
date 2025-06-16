@@ -32,21 +32,27 @@ class IMAPEmailService(IEmailService):
         self.folder_parser = folder_parser or IMAPFolderParser()
         self.message_parser = message_parser or EmailMessageParser()
     
-    def connect(self, config: ConnectionConfig) -> bool:
+    def connect(self, config: ConnectionConfig, ssl_context=None) -> bool:
         """
-        Connect to IMAP server with provided configuration
+        Connect to IMAP server with provided configuration and optional SSL context.
         
         Args:
             config: Connection configuration
+            ssl_context: Optional custom SSL context
             
         Returns:
             bool: Success status
         """
         try:
+            import ssl
             self.config = config
+            if ssl_context is None:
+                # Use a secure default context
+                ssl_context = ssl.create_default_context()
             self.connection = imaplib.IMAP4_SSL(
-                config.imap_server, 
-                config.imap_port
+                config.imap_server,
+                config.imap_port,
+                ssl_context=ssl_context
             )
             self.connection.login(config.imap_username, config.imap_password)
             return True
@@ -100,7 +106,44 @@ class IMAPEmailService(IEmailService):
             for folder_name in allowed_folders:
                 try:
                     # Try to select the folder to verify it exists
-                    test_status, _ = self.connection.select(folder_name, readonly=True)
+                    try:
+                        test_status, test_response = self.connection.select(folder_name, readonly=True)
+                        # Check for suspicious non-IMAP responses
+                        if isinstance(test_response, bytes):
+                            test_response_str = test_response.decode(errors='ignore')
+                        else:
+                            test_response_str = str(test_response)
+                        # Clean non-IMAP lines (e.g., spam filter headers) before status check
+                        if isinstance(test_response, bytes):
+                            cleaned_response = b"\n".join(
+                                line for line in test_response.split(b"\n")
+                                if b'HEADER_FROM_DIFFERENT_DOMAINS' not in line
+                            )
+                            test_response_str = cleaned_response.decode(errors='ignore')
+                        else:
+                            cleaned_response = "\n".join(
+                                line for line in str(test_response).split("\n")
+                                if 'HEADER_FROM_DIFFERENT_DOMAINS' not in line
+                            )
+                            test_response_str = cleaned_response
+                        
+                        if test_status != 'OK':
+                            print(f"Suspicious or invalid IMAP response for {folder_name}: {test_status}, {test_response_str}")
+                            raise Exception(f"Non-IMAP response: {test_response_str}")
+                    except Exception as e:
+                        print(f"EXAMINE failed for {folder_name} with error: {e}, retrying with SELECT (readonly=False)")
+                        try:
+                            test_status, test_response = self.connection.select(folder_name, readonly=False)
+                            if isinstance(test_response, bytes):
+                                test_response_str = test_response.decode(errors='ignore')
+                            else:
+                                test_response_str = str(test_response)
+                            if test_status != 'OK' or 'HEADER_FROM_DIFFERENT_DOMAINS' in test_response_str:
+                                print(f"Suspicious or invalid IMAP response for {folder_name} (SELECT): {test_status}, {test_response_str}")
+                                continue  # Skip this folder
+                        except Exception as e2:
+                            print(f"SELECT also failed for {folder_name} with error: {e2}")
+                            continue  # Skip this folder
                     if test_status == 'OK':
                         print(f"Found allowed folder on server: {folder_name}")
                         
@@ -178,12 +221,20 @@ class IMAPEmailService(IEmailService):
             # Get latest emails (limited by limit parameter)
             for email_id in reversed(email_ids[-limit:]):
                 try:
-                    status, msg_data = self.connection.fetch(email_id, '(RFC822)')
+                    # Ensure email_id is a non-empty string
+                    if not email_id or email_id in [b'0', b'']:
+                        print(f"Skipping invalid email_id: {email_id}")
+                        continue
+                    if isinstance(email_id, bytes):
+                        email_id_str = email_id.decode('utf-8')
+                    else:
+                        email_id_str = str(email_id)
+                    status, msg_data = self.connection.fetch(email_id_str, '(RFC822)')
                     if status == 'OK':
                         raw_email = msg_data[0][1]
                         # Use injected parser
                         email_obj = self.message_parser.parse_email(raw_email)
-                        email_obj.id = email_id.decode('utf-8')
+                        email_obj.id = email_id_str
                         emails.append(email_obj)
                 except Exception as e:
                     print(f"Failed to fetch email {email_id}: {e}")
@@ -476,3 +527,32 @@ class IMAPEmailService(IEmailService):
             
         except Exception as e:
             return {'error': str(e)}
+
+    def get_raw_email(self, email_id: str) -> Optional[str]:
+        """
+        Fetch the raw RFC822 source of an email by ID from allowed folders.
+        """
+        if not self.connection:
+            return None
+        allowed_folders = [
+            'INBOX',
+            'INBOX.Drafts',
+            'INBOX.Sent',
+            'INBOX.spam',
+            'INBOX.Trash',
+            'INBOX.Archive'
+        ]
+        for folder in allowed_folders:
+            try:
+                status, _ = self.connection.select(folder, readonly=True)
+                if status != 'OK':
+                    continue
+                status, msg_data = self.connection.fetch(email_id, '(RFC822)')
+                if status == 'OK' and msg_data and msg_data[0]:
+                    raw_bytes = msg_data[0][1]
+                    if isinstance(raw_bytes, bytes):
+                        return raw_bytes.decode('utf-8', errors='replace')
+                    return str(raw_bytes)
+            except Exception:
+                continue
+        return None

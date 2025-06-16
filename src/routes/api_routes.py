@@ -260,3 +260,17 @@ def register_api_routes(app: Flask) -> None:
             error_msg = str(e)
             print(f"[DEBUG FOLDERS] Exception: {error_msg}")
             return jsonify({'error': error_msg}), 500
+
+    @app.route('/api/email-raw')
+    def get_email_raw():
+        """Get raw email source by ID"""
+        try:
+            email_id = request.args.get('id')
+            if not email_id:
+                return jsonify({'error': 'Missing email id'}), 400
+            raw = service_manager.get_email_raw(email_id)
+            if raw is None:
+                return jsonify({'error': 'Raw email not found'}), 404
+            return jsonify({'raw': raw})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500

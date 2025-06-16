@@ -292,6 +292,12 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
+        .imperial-button.active {
+            background: #4B0082 !important;
+            color: #fff !important;
+            border-color: #A88EBC !important;
+            box-shadow: 0 2px 8px rgba(75,0,130,0.15);
+        }
         
         /* Analysis Panel */
         .analysis-section {
@@ -346,6 +352,20 @@
             .sidebar, .emails-list {
                 display: none;
             }
+        }
+    </style>
+    <style>
+        .html-bg {
+            background: rgba(255,255,255,0.92);
+            color: #222 !important;
+            border-radius: 8px;
+            padding: 18px 20px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            overflow-x: auto;
+        }
+        .html-bg * {
+            color: #222 !important;
         }
     </style>
 </head>
@@ -452,9 +472,10 @@
             <!-- Compact Toolbar at Top (shows context-sensitive actions for selected email) -->
             <!-- Compact Toolbar at Top (shows context-sensitive actions for selected email) -->
             <div class="main-toolbar" style="display: flex; gap: 8px; align-items: center; padding: 8px 16px; border-bottom: 1px solid rgba(75, 0, 130, 0.10); background: rgba(75, 0, 130, 0.03); flex-shrink: 0;">
-                <fast-button id="analyzeSpamSingleBtn" size="small" title="Analyze This Email">🛡️</fast-button>
-                <fast-button id="analyzeEmailBtn" size="small" title="Analyze Email Content">🔍</fast-button>
-                <fast-button id="generateDraftBtn" size="small" title="Generate Draft Response">✍️</fast-button>
+                <fast-button id="analyzeSpamSingleBtn" size="small" title="Analyze This Email">🛡️ Spam?</fast-button>
+                <fast-button id="analyzeEmailBtn" size="small" title="Analyze Email Content">🔍 Analyze</fast-button>
+                <fast-button id="generateDraftBtn" size="small" title="Generate Draft Response">✍️ Draft</fast-button>
+                <fast-button id="showRawEmailBtn" size="small" title="Show RAW Email">🗒️ RAW</fast-button>
             </div>
             <!-- Tool Result Box (shown when a compact toolbar tool is used) -->
             <div id="toolResultBox" style="display:none; margin: 0 16px 16px 16px; background: rgba(30,27,69,0.85); border: 1px solid #4B0082; border-radius: 8px; padding: 20px; position: relative;">
@@ -466,6 +487,11 @@
                 <div style="text-align: center; color: #777777; margin-top: 80px;">
                     <div style="font-size: 48px; margin-bottom: 16px;">📬</div>
                     <div>Select an email to view details and AI analysis</div>
+                </div>
+                <!-- Email content toggle, injected dynamically -->
+                <div id="emailContentToggleContainer" style="display:none; margin-bottom: 16px; text-align: right;">
+                    <fast-button id="togglePlainBtn" class="imperial-button" appearance="stealth" style="margin-right: 8px;">Plain Text</fast-button>
+                    <fast-button id="toggleHtmlBtn" class="imperial-button" appearance="stealth">HTML</fast-button>
                 </div>
             </div>
         </div>

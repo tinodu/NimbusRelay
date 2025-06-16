@@ -628,20 +628,103 @@ class NimbusRelayApp {
     renderEmailDetails(email) {
         const detailsPanel = document.getElementById('emailDetails');
         if (!detailsPanel) return;
-        
+
         const date = new Date(email.date);
         const formattedDate = this.formatDateTime(date);
-        
+
+        // Prepare both plain and HTML bodies
+        let plainBody = '';
+        let htmlBody = '';
+        if (email.text_body) {
+            plainBody = `<pre style="white-space: pre-wrap; color: #E6E6E6; font-size: 15px; margin:0;">${this.escapeHtml(email.text_body)}</pre>`;
+        } else if (email.body) {
+            plainBody = `<pre style="white-space: pre-wrap; color: #E6E6E6; font-size: 15px; margin:0;">${this.escapeHtml(email.body)}</pre>`;
+        }
+        if (email.html_body) {
+            htmlBody = `<div class="email-html-body html-bg">${this.sanitizeHtml(email.html_body)}</div>`;
+        }
+
+        // Decide which toggle to show
+        const hasPlain = !!plainBody;
+        const hasHtml = !!htmlBody;
+        let showToggle = hasPlain && hasHtml;
+
+        // Default view: HTML if available, else plain
+        if (!this.emailContentView) this.emailContentView = {};
+        const emailId = email.id || 'current';
+        if (!this.emailContentView[emailId]) {
+            this.emailContentView[emailId] = hasHtml ? 'html' : 'plain';
+        }
+        let view = this.emailContentView[emailId];
+
+        // Compose toggle UI (will be moved into the toggle container)
+        // Render the main details panel
         detailsPanel.innerHTML = `
             <div class="email-header" style="margin-bottom: 24px;">
                 <h3 style="color: #A88EBC; margin-bottom: 8px;">${this.escapeHtml(email.subject || '(no subject)')}</h3>
                 <div style="color: #C0C0C0; margin-bottom: 4px;">From: <span>${this.escapeHtml(email.from || 'Unknown Sender')}</span></div>
                 <div style="color: #999999; font-size: 12px;">${formattedDate}</div>
             </div>
-            <div class="email-body" style="white-space: pre-wrap; color: #E6E6E6; font-size: 15px;">
-                ${this.escapeHtml(email.body || '')}
+            <div class="email-body" id="emailBodyContent">
+                ${
+                    view === 'html'
+                        ? (htmlBody || plainBody || `<div style="color:#777;">(No content)</div>`)
+                        : (plainBody || htmlBody || `<div style="color:#777;">(No content)</div>`)
+                }
             </div>
         `;
+
+        // Show/hide the toggle container
+        const toggleContainer = document.getElementById('emailContentToggleContainer');
+        if (toggleContainer) {
+            if (showToggle) {
+                toggleContainer.style.display = 'block';
+                // Set button states
+                const plainBtn = document.getElementById('togglePlainBtn');
+                const htmlBtn = document.getElementById('toggleHtmlBtn');
+                if (plainBtn && htmlBtn) {
+                    plainBtn.classList.toggle('active', view === 'plain');
+                    htmlBtn.classList.toggle('active', view === 'html');
+                    // Remove previous listeners
+                    plainBtn.onclick = null;
+                    htmlBtn.onclick = null;
+                    // Add listeners
+                    plainBtn.onclick = () => {
+                        this.emailContentView[emailId] = 'plain';
+                        this.renderEmailDetails(email);
+                    };
+                    htmlBtn.onclick = () => {
+                        this.emailContentView[emailId] = 'html';
+                        this.renderEmailDetails(email);
+                    };
+                }
+            } else {
+                toggleContainer.style.display = 'none';
+            }
+        }
+    }
+
+    /**
+     * Basic HTML sanitizer: strips script/style and dangerous tags/attributes.
+     * Allows only a safe subset of tags (b, i, u, a, p, br, ul, ol, li, strong, em, span, div, pre, code, blockquote).
+     */
+    sanitizeHtml(html) {
+        // Remove script/style tags and their content
+        html = html.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+        html = html.replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '');
+        // Remove event handlers and javascript: links
+        html = html.replace(/ on\w+="[^"]*"/gi, '');
+        html = html.replace(/ on\w+='[^']*'/gi, '');
+        html = html.replace(/javascript:/gi, '');
+        // Allow only safe tags
+        const allowedTags = /<\/?(b|i|u|a|p|br|ul|ol|li|strong|em|span|div|pre|code|blockquote)(\s+[^>]*)?>/gi;
+        // Remove all tags not in allowedTags
+        html = html.replace(/<\/?([a-z][a-z0-9]*)\b[^>]*>/gi, function (match, tag) {
+            return allowedTags.test(match) ? match : '';
+        });
+        // Remove hrefs except http(s)/mailto
+        html = html.replace(/<a\s+([^>]*?)href\s*=\s*(['"])(?!https?:|mailto:)[^'"]*\2([^>]*)>/gi, '<a $1$3>');
+        return html;
     }
     
     /**
@@ -661,6 +744,38 @@ class NimbusRelayApp {
         const generateDraftBtn = document.getElementById('generateDraftBtn');
         if (generateDraftBtn) {
             generateDraftBtn.addEventListener('click', () => this.generateEmailDraft(this.currentEmail));
+        }
+
+        const showRawBtn = document.getElementById('showRawEmailBtn');
+        if (showRawBtn) {
+            showRawBtn.addEventListener('click', () => this.showRawEmail(this.currentEmail));
+        }
+    }
+
+    /**
+     * Show RAW email content in the tool result box
+     */
+    async showRawEmail(email) {
+        if (!email || !email.id) {
+            this.showToolResultBox('<div class="status-error" style="padding: 12px; border-radius: 6px;">No email selected</div>');
+            return;
+        }
+        try {
+            this.showToolResultBox('<div class="loading"><div class="spinner"></div>Loading raw email...</div>');
+            const response = await fetch(`/api/email-raw?id=${encodeURIComponent(email.id)}`);
+            const result = await response.json();
+            if (result.error) {
+                this.showToolResultBox(`<div class="status-error" style="padding: 12px; border-radius: 6px;">Error: ${this.escapeHtml(result.error)}</div>`);
+            } else {
+                this.showToolResultBox(`
+                    <div style="background: rgba(30, 27, 69, 0.3); padding: 16px; border-radius: 6px; border: 1px solid rgba(75, 0, 130, 0.3); max-height: 60vh; overflow:auto;">
+                        <div style="margin-bottom: 12px; font-weight: 600; color: #A88EBC;">RAW Email Source:</div>
+                        <pre style="white-space: pre-wrap; font-size: 13px; line-height: 1.5; margin: 0; color: #E6E6E6;">${this.escapeHtml(result.raw || '')}</pre>
+                    </div>
+                `);
+            }
+        } catch (error) {
+            this.showToolResultBox('<div class="status-error" style="padding: 12px; border-radius: 6px;">Failed to load raw email</div>');
         }
     }
 
