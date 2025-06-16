@@ -438,3 +438,20 @@ fast-badge::part(control) {
   letter-spacing: 0.5px;
   border: 1px solid rgba(239, 83, 80, 0.3);
 }
+
+/* Remove border and background from last 3 main-toolbar buttons */
+#togglePlainBtn[appearance="stealth"]::part(control),
+#toggleHtmlBtn[appearance="stealth"]::part(control),
+#viewHtmlSourceBtn[appearance="stealth"]::part(control) {
+  border: none !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure last 3 main-toolbar buttons match size of others */
+#togglePlainBtn[appearance="stealth"]::part(control),
+#toggleHtmlBtn[appearance="stealth"]::part(control),
+#viewHtmlSourceBtn[appearance="stealth"]::part(control) {
+  padding: 8px 16px !important;
+  border-radius: 6px !important;
+}

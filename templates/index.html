@@ -476,6 +476,9 @@
                 <fast-button id="analyzeEmailBtn" size="small" title="Analyze Email Content">🔍 Analyze</fast-button>
                 <fast-button id="generateDraftBtn" size="small" title="Generate Draft Response">✍️ Draft</fast-button>
                 <fast-button id="showRawEmailBtn" size="small" title="Show RAW Email">🗒️ RAW</fast-button>
+                <fast-button id="togglePlainBtn" size="small" style="display:none;">📄 Plain</fast-button>
+                <fast-button id="toggleHtmlBtn" size="small" style="display:none;">🌐 HTML</fast-button>
+                <fast-button id="viewHtmlSourceBtn" size="small" style="display:none;">🧾 Source</fast-button>
             </div>
             <!-- Tool Result Box (shown when a compact toolbar tool is used) -->
             <div id="toolResultBox" style="display:none; margin: 0 16px 16px 16px; background: rgba(30,27,69,0.85); border: 1px solid #4B0082; border-radius: 8px; padding: 20px; position: relative;">
@@ -491,7 +494,8 @@
                 <!-- Email content toggle, injected dynamically -->
                 <div id="emailContentToggleContainer" style="display:none; margin-bottom: 16px; text-align: right;">
                     <fast-button id="togglePlainBtn" class="imperial-button" appearance="stealth" style="margin-right: 8px;">Plain Text</fast-button>
-                    <fast-button id="toggleHtmlBtn" class="imperial-button" appearance="stealth">HTML</fast-button>
+                    <fast-button id="toggleHtmlBtn" class="imperial-button" appearance="stealth" style="margin-right: 8px;">HTML</fast-button>
+                    <fast-button id="viewHtmlSourceBtn" class="imperial-button" appearance="stealth" style="margin-right: 0;">View HTML Source</fast-button>
                 </div>
             </div>
         </div>

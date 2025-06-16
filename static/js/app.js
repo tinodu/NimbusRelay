@@ -657,8 +657,7 @@ class NimbusRelayApp {
         }
         let view = this.emailContentView[emailId];
 
-        // Compose toggle UI (will be moved into the toggle container)
-        // Render the main details panel
+        // Render the main details panel (no toggle/buttons inline)
         detailsPanel.innerHTML = `
             <div class="email-header" style="margin-bottom: 24px;">
                 <h3 style="color: #A88EBC; margin-bottom: 8px;">${this.escapeHtml(email.subject || '(no subject)')}</h3>
@@ -674,32 +673,50 @@ class NimbusRelayApp {
             </div>
         `;
 
-        // Show/hide the toggle container
-        const toggleContainer = document.getElementById('emailContentToggleContainer');
-        if (toggleContainer) {
-            if (showToggle) {
-                toggleContainer.style.display = 'block';
-                // Set button states
-                const plainBtn = document.getElementById('togglePlainBtn');
-                const htmlBtn = document.getElementById('toggleHtmlBtn');
-                if (plainBtn && htmlBtn) {
-                    plainBtn.classList.toggle('active', view === 'plain');
-                    htmlBtn.classList.toggle('active', view === 'html');
-                    // Remove previous listeners
-                    plainBtn.onclick = null;
-                    htmlBtn.onclick = null;
-                    // Add listeners
-                    plainBtn.onclick = () => {
-                        this.emailContentView[emailId] = 'plain';
-                        this.renderEmailDetails(email);
+        // Set up toolbar toggle/source buttons
+        const plainBtn = document.getElementById('togglePlainBtn');
+        const htmlBtn = document.getElementById('toggleHtmlBtn');
+        const viewHtmlSourceBtn = document.getElementById('viewHtmlSourceBtn');
+
+        // Hide all by default
+        if (plainBtn) plainBtn.style.display = 'none';
+        if (htmlBtn) htmlBtn.style.display = 'none';
+        if (viewHtmlSourceBtn) viewHtmlSourceBtn.style.display = 'none';
+
+        if (showToggle || hasHtml) {
+            // Show/hide and set up toggle buttons
+            if (plainBtn && htmlBtn && showToggle) {
+                plainBtn.style.display = '';
+                htmlBtn.style.display = '';
+                plainBtn.classList.toggle('active', view === 'plain');
+                htmlBtn.classList.toggle('active', view === 'html');
+                plainBtn.onclick = () => {
+                    this.emailContentView[emailId] = 'plain';
+                    this.renderEmailDetails(email);
+                };
+                htmlBtn.onclick = () => {
+                    this.emailContentView[emailId] = 'html';
+                    this.renderEmailDetails(email);
+                };
+            }
+            // Show/hide and set up HTML source button
+            if (viewHtmlSourceBtn) {
+                if (hasHtml) {
+                    viewHtmlSourceBtn.style.display = '';
+                    viewHtmlSourceBtn.disabled = false;
+                    viewHtmlSourceBtn.onclick = () => {
+                        this.showToolResultBox(`
+                            <div style="background: rgba(30, 27, 69, 0.3); padding: 16px; border-radius: 6px; border: 1px solid rgba(75, 0, 130, 0.3); max-height: 60vh; overflow:auto;">
+                                <div style="margin-bottom: 12px; font-weight: 600; color: #A88EBC;">HTML Source:</div>
+                                <pre style="white-space: pre-wrap; font-size: 13px; line-height: 1.5; margin: 0; color: #E6E6E6;">${this.escapeHtml(email.html_body || '')}</pre>
+                            </div>
+                        `);
                     };
-                    htmlBtn.onclick = () => {
-                        this.emailContentView[emailId] = 'html';
-                        this.renderEmailDetails(email);
-                    };
+                } else {
+                    viewHtmlSourceBtn.style.display = 'none';
+                    viewHtmlSourceBtn.onclick = null;
+                    viewHtmlSourceBtn.disabled = true;
                 }
-            } else {
-                toggleContainer.style.display = 'none';
             }
         }
     }

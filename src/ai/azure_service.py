@@ -81,7 +81,20 @@ class AzureAIService(IAIService):
                         del os.environ[var]
                 
                 try:
-                    # Create client without any parameters to avoid the proxies issue
+                    # Defensive: Remove any proxies key from environment or kwargs before client creation
+                    import inspect
+                    import os
+
+                    # Remove proxies from environment if present
+                    if "OPENAI_PROXY" in os.environ:
+                        print("Removing OPENAI_PROXY from environment")
+                        del os.environ["OPENAI_PROXY"]
+
+                    # Remove proxies from AzureOpenAI.__init__ kwargs if present (future-proof)
+                    azureopenai_init = AzureOpenAI.__init__
+                    if "proxies" in inspect.signature(azureopenai_init).parameters:
+                        print("AzureOpenAI.__init__ accepts proxies, but will not pass it.")
+
                     self.client = AzureOpenAI()
                     print("Method 1 successful - using environment variables")
                     
@@ -109,8 +122,12 @@ class AzureAIService(IAIService):
                             import httpx
                             
                             # Create a custom HTTP client without proxy support
+                            # Defensive: Ensure no proxies argument is passed to httpx.Client or AzureOpenAI
                             http_client = httpx.Client()
-                            
+                            if hasattr(http_client, "proxies"):
+                                print("Warning: http_client has proxies attribute, removing for safety")
+                                delattr(http_client, "proxies")
+
                             self.client = AzureOpenAI(
                                 azure_endpoint=config.azure_endpoint,
                                 api_key=config.azure_api_key,
