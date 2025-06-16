@@ -12,6 +12,11 @@ class NimbusRelayApp {
         this.emails = [];
         this.folders = [];
         this.isConfigured = false;
+
+        // Tool result box elements
+        this.toolResultBox = null;
+        this.toolResultContent = null;
+        this.closeToolResultBoxBtn = null;
         
         this.init();
     }
@@ -37,6 +42,17 @@ class NimbusRelayApp {
         this.updateDebugStatus('🚀 Initializing NimbusRelay...');
         this.setupEventListeners();
         this.initializeSocket();
+
+        // Setup tool result box
+        this.toolResultBox = document.getElementById('toolResultBox');
+        this.toolResultContent = document.getElementById('toolResultContent');
+        this.closeToolResultBoxBtn = document.getElementById('closeToolResultBox');
+        if (this.closeToolResultBoxBtn) {
+            this.closeToolResultBoxBtn.addEventListener('click', () => this.hideToolResultBox());
+        }
+
+        this.setupEmailDetailListeners();
+
         await this.checkConfiguration();
     }
     
@@ -288,6 +304,8 @@ class NimbusRelayApp {
             this.loadFolders(),
             this.loadEmails()
         ]);
+        // Load folder counts after folders are loaded
+        await this.loadFolderCounts();
     }
     
     /**
@@ -316,6 +334,34 @@ class NimbusRelayApp {
             console.error('❌ Failed to load folders:', error);
             this.showStatus('Failed to load folders', 'error');
             this.showEmptyFolders();
+        }
+    }
+    
+    /**
+     * Load folder counts
+     */
+    async loadFolderCounts() {
+        try {
+            console.log('📊 Loading folder counts...');
+            const response = await fetch('/api/folder-counts');
+            const data = await response.json();
+            
+            if (data.counts) {
+                console.log('✅ Loaded folder counts:', data.counts);
+                // Update count badges for each folder
+                Object.entries(data.counts).forEach(([folderName, count]) => {
+                    const countElement = document.getElementById(`count-${folderName.replace(/[^a-zA-Z0-9]/g, '_')}`);
+                    if (countElement) {
+                        countElement.textContent = count;
+                        // Always show the count, even if it's 0
+                        countElement.style.display = 'inline-block';
+                    }
+                });
+            } else if (data.error) {
+                console.error('❌ Failed to load folder counts:', data.error);
+            }
+        } catch (error) {
+            console.error('❌ Failed to load folder counts:', error);
         }
     }
     
@@ -425,7 +471,7 @@ class NimbusRelayApp {
             <span class="folder-icon">${icon}</span>
             <span class="folder-name">${displayName}</span>
             ${indicators}
-            <span class="folder-count" id="count-${folder.name.replace(/[^a-zA-Z0-9]/g, '_')}"></span>
+            <span class="folder-count" id="count-${folder.name.replace(/[^a-zA-Z0-9]/g, '_')}">0</span>
         `;
         
         div.addEventListener('click', () => this.selectFolder(folder.name));
@@ -492,10 +538,17 @@ class NimbusRelayApp {
     showEmailLoading() {
         const emailList = document.getElementById('emailList');
         if (emailList) {
+            // Show 5 shimmer placeholders
             emailList.innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    Loading emails...
+                <div>
+                    ${Array(5).fill(`
+                        <div class="email-item" style="padding:16px 0;display:flex;flex-direction:column;gap:8px;">
+                            <div class="loading-shimmer" style="width:80px;height:12px;border-radius:6px;"></div>
+                            <div class="loading-shimmer" style="width:160px;height:16px;border-radius:6px;"></div>
+                            <div class="loading-shimmer" style="width:220px;height:14px;border-radius:6px;"></div>
+                            <div class="loading-shimmer" style="width:100%;height:10px;border-radius:6px;"></div>
+                        </div>
+                    `).join('')}
                 </div>
             `;
         }
@@ -533,19 +586,18 @@ class NimbusRelayApp {
         const div = document.createElement('div');
         div.className = 'email-item';
         div.dataset.emailId = email.id;
-        
+
         const date = new Date(email.date);
-        const formattedDate = this.formatDate(date);
-        
+        const formattedDateTime = this.formatDateTime(date);
+
         div.innerHTML = `
-            <div class="email-date">${formattedDate}</div>
+            <div class="email-date">${formattedDateTime}</div>
             <div class="email-sender">${this.escapeHtml(email.from || 'Unknown Sender')}</div>
             <div class="email-subject">${this.escapeHtml(email.subject || '(no subject)')}</div>
-            <div class="email-preview">${this.escapeHtml(email.preview || '')}</div>
         `;
-        
+
         div.addEventListener('click', () => this.selectEmail(email));
-        
+
         return div;
     }
     
@@ -585,28 +637,10 @@ class NimbusRelayApp {
                 <div style="color: #C0C0C0; margin-bottom: 4px;">From: <span>${this.escapeHtml(email.from || 'Unknown Sender')}</span></div>
                 <div style="color: #999999; font-size: 12px;">${formattedDate}</div>
             </div>
-            
-            <div class="analysis-section">
-                <div class="analysis-title">🛡️ Spam Analysis</div>
-                <fast-button id="analyzeSpamSingleBtn" size="small">Analyze This Email</fast-button>
-                <div id="spamResult" style="margin-top: 12px;"></div>
-            </div>
-            
-            <div class="analysis-section">
-                <div class="analysis-title">🔍 Email Analysis</div>
-                <fast-button id="analyzeEmailBtn" size="small">Analyze Email Content</fast-button>
-                <div id="emailAnalysis" style="margin-top: 12px;"></div>
-            </div>
-            
-            <div class="analysis-section">
-                <div class="analysis-title">✍️ Draft Response</div>
-                <fast-button id="generateDraftBtn" size="small">Generate Draft Response</fast-button>
-                <div id="draftResult" style="margin-top: 12px;"></div>
+            <div class="email-body" style="white-space: pre-wrap; color: #E6E6E6; font-size: 15px;">
+                ${this.escapeHtml(email.body || '')}
             </div>
         `;
-        
-        // Setup event listeners for analysis buttons
-        this.setupEmailDetailListeners();
     }
     
     /**
@@ -628,6 +662,26 @@ class NimbusRelayApp {
             generateDraftBtn.addEventListener('click', () => this.generateEmailDraft(this.currentEmail));
         }
     }
+
+    /**
+     * Show the tool result box with given HTML content
+     */
+    showToolResultBox(content) {
+        if (this.toolResultBox && this.toolResultContent) {
+            this.toolResultContent.innerHTML = content;
+            this.toolResultBox.style.display = 'block';
+        }
+    }
+
+    /**
+     * Hide the tool result box
+     */
+    hideToolResultBox() {
+        if (this.toolResultBox && this.toolResultContent) {
+            this.toolResultBox.style.display = 'none';
+            this.toolResultContent.innerHTML = '';
+        }
+    }
     
     /**
      * Analyze email for spam
@@ -635,10 +689,11 @@ class NimbusRelayApp {
     async analyzeEmailSpam(email) {
         try {
             const button = document.getElementById('analyzeSpamSingleBtn');
-            const resultDiv = document.getElementById('spamResult');
-            
-            if (button) button.textContent = 'Analyzing...';
-            if (resultDiv) resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Analyzing for spam...</div>';
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '🛡️';
+            }
+            this.showToolResultBox('<div class="loading"><div class="spinner"></div>Analyzing for spam...</div>');
             
             const response = await fetch('/api/analyze-spam', {
                 method: 'POST',
@@ -650,34 +705,36 @@ class NimbusRelayApp {
             
             const result = await response.json();
             
-            if (button) button.textContent = 'Analyze This Email';
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '🛡️';
+            }
             
             if (result.error) {
-                if (resultDiv) resultDiv.innerHTML = `<div class="status-error" style="padding: 12px; border-radius: 6px;">Error: ${result.error}</div>`;
+                this.showToolResultBox(`<div class="status-error" style="padding: 12px; border-radius: 6px;">Error: ${result.error}</div>`);
             } else {
                 // Check if classification indicates spam - handle multiple formats
                 const classification = result.classification || '';
-                const isSpam = classification.toLowerCase().includes('spam') || 
+                const isSpam = classification.toLowerCase().includes('spam') ||
                               classification.toLowerCase().includes('junk') ||
                               classification === 'Spam/Junk';
                 const statusClass = isSpam ? 'spam' : 'not-spam';
-                if (resultDiv) {
-                    resultDiv.innerHTML = `
-                        <div class="spam-result ${statusClass}">
-                            <strong>${result.classification}</strong>
-                            ${result.confidence ? `<br>Confidence: ${Math.round(result.confidence * 100)}%` : ''}
-                            ${result.reason ? `<br><small>${result.reason}</small>` : ''}
-                        </div>
-                    `;
-                }
+                this.showToolResultBox(`
+                    <div class="spam-result ${statusClass}">
+                        <strong>${result.classification}</strong>
+                        ${result.confidence ? `<br>Confidence: ${Math.round(result.confidence * 100)}%` : ''}
+                        ${result.reason ? `<br><small>${result.reason}</small>` : ''}
+                    </div>
+                `);
             }
         } catch (error) {
             console.error('Failed to analyze spam:', error);
             const button = document.getElementById('analyzeSpamSingleBtn');
-            const resultDiv = document.getElementById('spamResult');
-            
-            if (button) button.textContent = 'Analyze This Email';
-            if (resultDiv) resultDiv.innerHTML = '<div class="status-error" style="padding: 12px; border-radius: 6px;">Failed to analyze email</div>';
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '🛡️';
+            }
+            this.showToolResultBox('<div class="status-error" style="padding: 12px; border-radius: 6px;">Failed to analyze email</div>');
         }
     }
     
@@ -687,10 +744,11 @@ class NimbusRelayApp {
     async analyzeEmailContent(email) {
         try {
             const button = document.getElementById('analyzeEmailBtn');
-            const resultDiv = document.getElementById('emailAnalysis');
-            
-            if (button) button.textContent = 'Analyzing...';
-            if (resultDiv) resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Analyzing email content...</div>';
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '🔍';
+            }
+            this.showToolResultBox('<div class="loading"><div class="spinner"></div>Analyzing email content...</div>');
             
             const response = await fetch('/api/analyze-email', {
                 method: 'POST',
@@ -702,26 +760,28 @@ class NimbusRelayApp {
             
             const result = await response.json();
             
-            if (button) button.textContent = 'Analyze Email Content';
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '🔍';
+            }
             
             if (result.error) {
-                if (resultDiv) resultDiv.innerHTML = `<div class="status-error" style="padding: 12px; border-radius: 6px;">Error: ${result.error}</div>`;
+                this.showToolResultBox(`<div class="status-error" style="padding: 12px; border-radius: 6px;">Error: ${result.error}</div>`);
             } else {
-                if (resultDiv) {
-                    resultDiv.innerHTML = `
-                        <div style="background: rgba(30, 27, 69, 0.3); padding: 16px; border-radius: 6px; border: 1px solid rgba(75, 0, 130, 0.3);">
-                            <pre style="white-space: pre-wrap; font-size: 13px; line-height: 1.5; margin: 0; color: #C0C0C0;">${this.escapeHtml(result.analysis)}</pre>
-                        </div>
-                    `;
-                }
+                this.showToolResultBox(`
+                    <div style="background: rgba(30, 27, 69, 0.3); padding: 16px; border-radius: 6px; border: 1px solid rgba(75, 0, 130, 0.3);">
+                        <pre style="white-space: pre-wrap; font-size: 13px; line-height: 1.5; margin: 0; color: #C0C0C0;">${this.escapeHtml(result.analysis)}</pre>
+                    </div>
+                `);
             }
         } catch (error) {
             console.error('Failed to analyze email:', error);
             const button = document.getElementById('analyzeEmailBtn');
-            const resultDiv = document.getElementById('emailAnalysis');
-            
-            if (button) button.textContent = 'Analyze Email Content';
-            if (resultDiv) resultDiv.innerHTML = '<div class="status-error" style="padding: 12px; border-radius: 6px;">Failed to analyze email</div>';
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '🔍';
+            }
+            this.showToolResultBox('<div class="status-error" style="padding: 12px; border-radius: 6px;">Failed to analyze email</div>');
         }
     }
     
@@ -731,10 +791,11 @@ class NimbusRelayApp {
     async generateEmailDraft(email) {
         try {
             const button = document.getElementById('generateDraftBtn');
-            const resultDiv = document.getElementById('draftResult');
-            
-            if (button) button.textContent = 'Generating...';
-            if (resultDiv) resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Generating draft response...</div>';
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '✍️';
+            }
+            this.showToolResultBox('<div class="loading"><div class="spinner"></div>Generating draft response...</div>');
             
             // First analyze the email, then generate draft
             const analyzeResponse = await fetch('/api/analyze-email', {
@@ -762,27 +823,29 @@ class NimbusRelayApp {
             
             const draftResult = await draftResponse.json();
             
-            if (button) button.textContent = 'Generate Draft Response';
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '✍️';
+            }
             
             if (draftResult.error) {
-                if (resultDiv) resultDiv.innerHTML = `<div class="status-error" style="padding: 12px; border-radius: 6px;">Error: ${draftResult.error}</div>`;
+                this.showToolResultBox(`<div class="status-error" style="padding: 12px; border-radius: 6px;">Error: ${draftResult.error}</div>`);
             } else {
-                if (resultDiv) {
-                    resultDiv.innerHTML = `
-                        <div style="background: rgba(30, 27, 69, 0.3); padding: 16px; border-radius: 6px; border: 1px solid rgba(75, 0, 130, 0.3);">
-                            <div style="margin-bottom: 12px; font-weight: 600; color: #A88EBC;">Generated Draft:</div>
-                            <pre style="white-space: pre-wrap; font-size: 13px; line-height: 1.5; margin: 0; color: #E6E6E6;">${this.escapeHtml(draftResult.draft)}</pre>
-                        </div>
-                    `;
-                }
+                this.showToolResultBox(`
+                    <div style="background: rgba(30, 27, 69, 0.3); padding: 16px; border-radius: 6px; border: 1px solid rgba(75, 0, 130, 0.3);">
+                        <div style="margin-bottom: 12px; font-weight: 600; color: #A88EBC;">Generated Draft:</div>
+                        <pre style="white-space: pre-wrap; font-size: 13px; line-height: 1.5; margin: 0; color: #E6E6E6;">${this.escapeHtml(draftResult.draft)}</pre>
+                    </div>
+                `);
             }
         } catch (error) {
             console.error('Failed to generate draft:', error);
             const button = document.getElementById('generateDraftBtn');
-            const resultDiv = document.getElementById('draftResult');
-            
-            if (button) button.textContent = 'Generate Draft Response';
-            if (resultDiv) resultDiv.innerHTML = '<div class="status-error" style="padding: 12px; border-radius: 6px;">Failed to generate draft</div>';
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '✍️';
+            }
+            this.showToolResultBox('<div class="status-error" style="padding: 12px; border-radius: 6px;">Failed to generate draft</div>');
         }
     }
     
@@ -1050,8 +1113,8 @@ class NimbusRelayApp {
             console.log('✅ Main interface forced to display');
         }
         
-        // Force load some demo data
-        this.showDemoData();
+        // No demo data: only show shimmer/loading states on force show
+        // this.showDemoData();
     }
     
     /**

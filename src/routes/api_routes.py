@@ -21,6 +21,27 @@ def register_api_routes(app: Flask) -> None:
     Args:
         app: Flask application instance
     """
+
+    import re
+
+    def strip_json_code_block(text):
+        """
+        Extracts and returns any text outside a JSON code block.
+        If only a JSON code block exists, returns its content as plain text.
+        """
+        if not isinstance(text, str):
+            return text
+        # Find all code blocks
+        code_blocks = re.findall(r"```json(.*?)```", text, flags=re.DOTALL)
+        # Remove all code blocks from text
+        text_outside = re.sub(r"```json.*?```", "", text, flags=re.DOTALL).strip()
+        if text_outside:
+            return text_outside
+        elif code_blocks:
+            # Return the first code block content, stripped of whitespace
+            return code_blocks[0].strip()
+        else:
+            return text.strip()
     
     @app.route('/api/config')
     def get_config():
@@ -88,6 +109,20 @@ def register_api_routes(app: Flask) -> None:
         except Exception as e:
             return jsonify({'error': str(e)}), 500
     
+    @app.route('/api/folder-counts')
+    def get_folder_counts():
+        """Get email counts for all folders"""
+        try:
+            result = service_manager.get_folder_counts()
+            
+            if 'error' in result:
+                return jsonify(result), 400
+            
+            return jsonify(result)
+            
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
     @app.route('/api/emails')
     def get_emails():
         """Get emails from specified folder"""
@@ -122,6 +157,12 @@ def register_api_routes(app: Flask) -> None:
             if 'error' in result:
                 print(f"[SPAM API] Error in analysis: {result['error']}")
                 return jsonify(result), 400
+
+            # If the result contains an 'explanation' or 'analysis' field, strip JSON code block
+            if 'explanation' in result and isinstance(result['explanation'], str):
+                result['explanation'] = strip_json_code_block(result['explanation'])
+            if 'analysis' in result and isinstance(result['analysis'], str):
+                result['analysis'] = strip_json_code_block(result['analysis'])
             
             print(f"[SPAM API] Returning result: {result}")
             return jsonify(result)
@@ -140,6 +181,10 @@ def register_api_routes(app: Flask) -> None:
             
             if 'error' in result:
                 return jsonify(result), 400
+
+            # If the result contains an 'analysis' field, strip JSON code block
+            if 'analysis' in result and isinstance(result['analysis'], str):
+                result['analysis'] = strip_json_code_block(result['analysis'])
             
             return jsonify(result)
             

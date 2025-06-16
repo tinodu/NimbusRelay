@@ -50,6 +50,11 @@ Following Pantone Matching System (PMS) alignment with imperial hues
   --gradient-royal: linear-gradient(90deg, #1E1B45 0%, #4B0082 50%, #800020 100%);
   --gradient-surface: linear-gradient(135deg, #1E1B45 0%, #2D2D2D 100%);
   --gradient-background: linear-gradient(135deg, #0F0F0F 0%, #1A1A2E 50%, #16213E 100%);
+  
+  /* Header specific colors */
+  --header-background: #0F0F0F;                /* Clean black background */
+  --header-border: rgba(255, 255, 255, 0.08); /* Subtle border */
+  --header-shadow: 0 1px 0 rgba(255, 255, 255, 0.05); /* Minimal shadow */
 }
 
 /* Microsoft FAST Component Overrides */
@@ -96,39 +101,52 @@ fast-text-field::part(label) {
 
 fast-button {
   --neutral-fill-rest: transparent;
-  --neutral-fill-hover: var(--hover-overlay);
-  --neutral-fill-active: var(--active-overlay);
-  --accent-fill-rest: var(--imperial-purple);
-  --accent-fill-hover: #5D1A8B;
-  --accent-fill-active: #3A0066;
+  --neutral-fill-hover: rgba(255, 255, 255, 0.05);
+  --neutral-fill-active: rgba(255, 255, 255, 0.08);
+  --accent-fill-rest: #1A1A1A;
+  --accent-fill-hover: #2D2D2D;
+  --accent-fill-active: #333333;
   --neutral-foreground-rest: var(--text-primary);
   --accent-foreground-rest: var(--text-primary);
 }
 
 fast-button::part(control) {
-  border: 1px solid var(--border-primary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   padding: 8px 16px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-size: 12px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
   transition: all 0.2s ease;
 }
 
 fast-button::part(control):hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-imperial);
-  border-color: var(--border-accent);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 fast-button[appearance="accent"]::part(control) {
-  background: var(--gradient-imperial);
-  border-color: var(--soft-lavender);
+  background: #1A1A1A;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #E6E6E6;
 }
 
 fast-button[appearance="accent"]::part(control):hover {
-  background: linear-gradient(135deg, #5D1A8B 0%, #6B1E9F 50%, #8B0000 100%);
+  background: #2D2D2D;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+fast-button[appearance="stealth"]::part(control) {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #C0C0C0;
+}
+
+fast-button[appearance="stealth"]::part(control):hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #E6E6E6;
 }
 
 fast-badge {
@@ -351,14 +369,17 @@ fast-badge::part(control) {
 
 /* Folder List Styling Enhancements */
 .folder-count {
-  font-size: 12px;
-  color: #A88EBC;
-  background: rgba(75, 0, 130, 0.3);
-  padding: 2px 8px;
-  border-radius: 12px;
-  min-width: 20px;
+  font-size: 11px;
+  color: #999999;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 4px 10px;
+  border-radius: 4px;
+  min-width: 24px;
   text-align: center;
-  margin-left: 8px;
+  margin-left: auto;
+  font-weight: 500;
+  display: inline-block;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .folder-indicator {

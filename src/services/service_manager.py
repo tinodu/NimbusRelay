@@ -119,6 +119,40 @@ class ServiceManager:
         except Exception as e:
             return {'error': str(e)}
     
+    def get_folder_counts(self) -> Dict[str, Any]:
+        """
+        Get email counts for all folders
+        
+        Returns:
+            Dict: Folder counts or error
+        """
+        try:
+            if not self.email_service.is_connected():
+                return {
+                    'error': 'Email service not connected. Please connect first.'
+                }
+            
+            # Get all folders
+            folders = self.email_service.list_folders(include_hidden=False)
+            folder_counts = {}
+            
+            # Get count for each folder
+            for folder in folders:
+                try:
+                    # Use the get_folder_count method to get accurate counts
+                    count = self.email_service.get_folder_count(folder.name)
+                    folder_counts[folder.name] = count
+                except Exception as e:
+                    print(f"Error getting count for folder {folder.name}: {e}")
+                    folder_counts[folder.name] = 0
+            
+            return {
+                'counts': folder_counts
+            }
+            
+        except Exception as e:
+            return {'error': str(e)}
+    
     def get_emails(self, folder: str, limit: int = 50) -> Dict[str, Any]:
         """
         Get emails from folder

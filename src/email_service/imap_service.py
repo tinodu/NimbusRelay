@@ -189,7 +189,19 @@ class IMAPEmailService(IEmailService):
                     print(f"Failed to fetch email {email_id}: {e}")
                     continue
             
-            return emails
+            # Sort emails by date descending
+            from email.utils import parsedate_to_datetime
+            def parse_date_safe(email):
+                try:
+                    return parsedate_to_datetime(email.date)
+                except Exception:
+                    return None
+            emails_sorted = sorted(
+                emails,
+                key=lambda e: parse_date_safe(e) or "",
+                reverse=True
+            )
+            return emails_sorted
         except Exception as e:
             print(f"Failed to get emails: {e}")
             return []
@@ -384,6 +396,44 @@ class IMAPEmailService(IEmailService):
         except Exception as e:
             print(f"Error checking folder '{folder_name}': {e}")
             return False
+    
+    def get_folder_count(self, folder_name: str) -> int:
+        """
+        Get the number of emails in a specific folder
+        
+        Args:
+            folder_name: Name of the folder
+            
+        Returns:
+            int: Number of emails in the folder
+        """
+        if not self.connection:
+            return 0
+        
+        try:
+            # Select the folder in readonly mode
+            status, data = self.connection.select(folder_name, readonly=True)
+            if status != 'OK':
+                print(f"Failed to select folder {folder_name} for counting")
+                return 0
+            
+            # Search for all messages
+            status, messages = self.connection.search(None, 'ALL')
+            if status != 'OK':
+                return 0
+            
+            # Count the messages
+            if messages[0]:
+                email_ids = messages[0].split()
+                count = len(email_ids)
+                print(f"Folder {folder_name} contains {count} emails")
+                return count
+            else:
+                return 0
+                
+        except Exception as e:
+            print(f"Error counting emails in folder {folder_name}: {e}")
+            return 0
     
     def debug_all_folders(self) -> dict:
         """
