@@ -648,6 +648,9 @@ class NimbusRelayApp {
         }
         if (email.html_body) {
             htmlBody = `<div class="email-html-body html-bg">${this.sanitizeHtml(email.html_body)}</div>`;
+// DEBUG: Log original and sanitized HTML for diagnosis
+console.log('[DEBUG] Original HTML body:', email.html_body);
+console.log('[DEBUG] Sanitized HTML body:', this.sanitizeHtml(email.html_body));
         }
 
         // Decide which toggle to show
@@ -739,14 +742,28 @@ class NimbusRelayApp {
         html = html.replace(/ on\w+="[^"]*"/gi, '');
         html = html.replace(/ on\w+='[^']*'/gi, '');
         html = html.replace(/javascript:/gi, '');
-        // Allow only safe tags
-        const allowedTags = /<\/?(b|i|u|a|p|br|ul|ol|li|strong|em|span|div|pre|code|blockquote)(\s+[^>]*)?>/gi;
-        // Remove all tags not in allowedTags
+        // Allow a safe subset of tags commonly used in emails, including all table tags (case-insensitive)
+        const allowedTagsList = [
+            'b','i','u','a','p','br','ul','ol','li','strong','em','span','div','pre','code','blockquote',
+            'table','thead','tbody','tfoot','tr','td','th','img','hr',
+            'h1','h2','h3','h4','h5','h6'
+        ];
+        const allowedTags = new RegExp(
+            `^/?(${allowedTagsList.join('|')})$`,
+            'i'
+        );
+        // Remove all tags not in allowedTagsList (case-insensitive)
         html = html.replace(/<\/?([a-z][a-z0-9]*)\b[^>]*>/gi, function (match, tag) {
-            return allowedTags.test(match) ? match : '';
+            return allowedTags.test(tag) ? match : '';
         });
         // Remove hrefs except http(s)/mailto
         html = html.replace(/<a\s+([^>]*?)href\s*=\s*(['"])(?!https?:|mailto:)[^'"]*\2([^>]*)>/gi, '<a $1$3>');
+        // Remove dangerous img attributes
+        html = html.replace(/<img([^>]+)>/gi, function (imgTag, attrs) {
+            // Only allow src, alt, width, height, style
+            const safeAttrs = attrs.match(/(src|alt|width|height|style)=["'][^"']*["']/gi);
+            return `<img${safeAttrs ? ' ' + safeAttrs.join(' ') : ''}>`;
+        });
         return html;
     }
     
