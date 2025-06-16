@@ -441,6 +441,12 @@ class NimbusRelayApp {
             const folderElement = this.createFolderElement(folder);
             folderList.appendChild(folderElement);
         });
+        // Auto-select the first folder if available and not already selected
+        if (this.folders.length > 0 && !this.currentFolder) {
+            const firstFolder = this.folders[0].name;
+            console.log('[DEBUG] Auto-selecting first folder:', firstFolder);
+            this.selectFolder(firstFolder);
+        }
     }
     
     /**

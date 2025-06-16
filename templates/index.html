@@ -355,6 +355,16 @@
         }
     </style>
     <style>
+        .toolbar-group {
+            display: flex;
+            gap: 8px;
+            margin-right: 18px;
+        }
+        .main-toolbar .toolbar-group:last-child {
+            margin-right: 0;
+        }
+    </style>
+    <style>
         .html-bg {
             background: rgba(255,255,255,0.92);
             color: #222 !important;
@@ -472,13 +482,19 @@
             <!-- Compact Toolbar at Top (shows context-sensitive actions for selected email) -->
             <!-- Compact Toolbar at Top (shows context-sensitive actions for selected email) -->
             <div class="main-toolbar" style="display: flex; gap: 8px; align-items: center; padding: 8px 16px; border-bottom: 1px solid rgba(75, 0, 130, 0.10); background: rgba(75, 0, 130, 0.03); flex-shrink: 0;">
-                <fast-button id="analyzeSpamSingleBtn" size="small" title="Analyze This Email">🛡️ Spam?</fast-button>
-                <fast-button id="analyzeEmailBtn" size="small" title="Analyze Email Content">🔍 Analyze</fast-button>
-                <fast-button id="generateDraftBtn" size="small" title="Generate Draft Response">✍️ Draft</fast-button>
-                <fast-button id="showRawEmailBtn" size="small" title="Show RAW Email">🗒️ RAW</fast-button>
-                <fast-button id="togglePlainBtn" size="small" style="display:none;">📄 Plain</fast-button>
-                <fast-button id="toggleHtmlBtn" size="small" style="display:none;">🌐 HTML</fast-button>
-                <fast-button id="viewHtmlSourceBtn" size="small" style="display:none;">🧾 Source</fast-button>
+                <div class="toolbar-group">
+                    <fast-button id="analyzeSpamSingleBtn" size="small" title="Analyze This Email">🛡️ Spam?</fast-button>
+                    <fast-button id="analyzeEmailBtn" size="small" title="Analyze Email Content">🔍 Analyze</fast-button>
+                    <fast-button id="generateDraftBtn" size="small" title="Generate Draft Response">✍️ Draft</fast-button>
+                </div>
+                <div class="toolbar-group">
+                    <fast-button id="showRawEmailBtn" size="small" title="Show RAW Email">🗒️ RAW</fast-button>
+                    <fast-button id="viewHtmlSourceBtn" size="small" style="display:none;">🧾 Source</fast-button>
+                </div>
+                <div class="toolbar-group">
+                    <fast-button id="togglePlainBtn" size="small" style="display:none;">📄 Plain</fast-button>
+                    <fast-button id="toggleHtmlBtn" size="small" style="display:none;">🌐 HTML</fast-button>
+                </div>
             </div>
             <!-- Tool Result Box (shown when a compact toolbar tool is used) -->
             <div id="toolResultBox" style="display:none; margin: 0 16px 16px 16px; background: rgba(30,27,69,0.85); border: 1px solid #4B0082; border-radius: 8px; padding: 20px; position: relative;">

@@ -113,13 +113,16 @@ class IMAPEmailService(IEmailService):
             # Check each allowed folder to see if it exists on the server
             for folder_name in allowed_folders:
                 try:
-                    # Log connection id and folder being checked
+                    # Log connection id and folder being checked (normal color)
                     print(f"[DEBUG] Checking folder: {folder_name}, connection id: {id(self.connection)}")
                     # Try to select the folder to verify it exists
                     try:
                         print(f"[DEBUG] Sending EXAMINE (readonly=True) for {folder_name} on connection id: {id(self.connection)}")
                         test_status, test_response = self.connection.select(folder_name, readonly=True)
                         print(f"[DEBUG] EXAMINE response for {folder_name}: status={test_status}, response={test_response!r}")
+                        # Extra debug for INBOX.Trash
+                        if folder_name == "INBOX.Trash":
+                            print(f"[DEBUG] Raw EXAMINE response for INBOX.Trash: {test_response!r}")
                         # Check for suspicious non-IMAP responses
                         if isinstance(test_response, bytes):
                             test_response_str = test_response.decode(errors='ignore')
@@ -139,15 +142,23 @@ class IMAPEmailService(IEmailService):
                             )
                             test_response_str = cleaned_response
                         
-                        if test_status != 'OK':
-                            print(f"Suspicious or invalid IMAP response for {folder_name}: {test_status}, {test_response_str}")
-                            raise Exception(f"Non-IMAP response: {test_response_str}")
+                        # Fix: skip folders with non-OK or malformed EXAMINE responses, do not disconnect
+                        if test_status != 'OK' or test_response_str.strip() in (".10,",):
+                            print(f"\033[91mSkipping folder {folder_name} due to suspicious or invalid IMAP response: {test_status}, {test_response_str}\033[0m")
+                            continue
                     except Exception as e:
-                        print(f"[DEBUG] EXAMINE failed for {folder_name} with error: {e}, connection id: {id(self.connection)}")
-                        # Reset the connection to avoid protocol state issues
+                        print(f"\033[91m[DEBUG] EXAMINE failed for {folder_name} with error: {e}, connection id: {id(self.connection)}\033[0m")
+                        # Always reset the connection after any EXAMINE failure (exception or not-OK)
                         self.disconnect()
                         if not self.connect(self.config):
-                            print(f"[DEBUG] Reconnect failed after EXAMINE error for {folder_name}")
+                            print(f"\033[91m[DEBUG] Reconnect failed after EXAMINE error for {folder_name}\033[0m")
+                            continue  # Skip this folder
+                        # After reconnect, verify connection is valid
+                        try:
+                            noop_status, noop_response = self.connection.noop()
+                            print(f"\033[91m[DEBUG] NOOP after reconnect: status={noop_status}, response={noop_response!r}\033[0m")
+                        except Exception as noop_e:
+                            print(f"\033[91m[DEBUG] NOOP failed after reconnect: {noop_e}\033[0m")
                             continue  # Skip this folder
                         try:
                             print(f"[DEBUG] Retrying SELECT (readonly=False) for {folder_name} on connection id: {id(self.connection)}")
@@ -158,10 +169,10 @@ class IMAPEmailService(IEmailService):
                             else:
                                 test_response_str = str(test_response)
                             if test_status != 'OK' or 'HEADER_FROM_DIFFERENT_DOMAINS' in test_response_str:
-                                print(f"Suspicious or invalid IMAP response for {folder_name} (SELECT): {test_status}, {test_response_str}")
+                                print(f"\033[91mSuspicious or invalid IMAP response for {folder_name} (SELECT): {test_status}, {test_response_str}\033[0m")
                                 continue  # Skip this folder
                         except Exception as e2:
-                            print(f"[DEBUG] SELECT also failed for {folder_name} with error: {e2}, connection id: {id(self.connection)}")
+                            print(f"\033[91m[DEBUG] SELECT also failed for {folder_name} with error: {e2}, connection id: {id(self.connection)}\033[0m")
                             continue  # Skip this folder
                     if test_status == 'OK':
                         print(f"[DEBUG] Found allowed folder on server: {folder_name}, connection id: {id(self.connection)}")
@@ -186,7 +197,7 @@ class IMAPEmailService(IEmailService):
                         print(f"[DEBUG] Allowed folder not found on server: {folder_name}, connection id: {id(self.connection)}")
                         
                 except Exception as e:
-                    print(f"Failed to check allowed folder {folder_name}: {e}")
+                    print(f"\033[91mFailed to check allowed folder {folder_name}: {e}\033[0m")
                     continue
             
             # If no allowed folders found, add at least INBOX
@@ -229,12 +240,15 @@ class IMAPEmailService(IEmailService):
         try:
             self.connection.select(folder)
             status, messages = self.connection.search(None, 'ALL')
+            print(f"[DEBUG] search() returned status={status}, messages={messages!r} for folder={folder}")
             if status != 'OK':
                 return []
             email_ids = messages[0].split()
+            print(f"[DEBUG] Parsed email_ids: {email_ids}")
             emails = []
             for email_id in reversed(email_ids[-limit:]):
                 try:
+                    print(f"[DEBUG] Attempting to fetch email_id: {email_id}")
                     if not email_id or email_id in [b'0', b'']:
                         print(f"Skipping invalid email_id: {email_id}")
                         continue
@@ -242,6 +256,7 @@ class IMAPEmailService(IEmailService):
                         email_id_str = email_id.decode('utf-8')
                     else:
                         email_id_str = str(email_id)
+                    print(f"[DEBUG] Using email_id_str for FETCH: {email_id_str}")
                     status, msg_data = self.connection.fetch(email_id_str, '(RFC822)')
                     if status == 'OK':
                         raw_email = msg_data[0][1]
