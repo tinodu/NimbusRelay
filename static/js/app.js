@@ -605,6 +605,7 @@ class NimbusRelayApp {
      * Select an email and show details
      */
     selectEmail(email) {
+        this.hideToolResultBox(); // Close tool boxes when switching to preview
         this.currentEmail = email;
         
         // Update selected email in UI
@@ -768,9 +769,21 @@ class NimbusRelayApp {
             if (result.error) {
                 this.showToolResultBox(`<div class="status-error" style="padding: 12px; border-radius: 6px;">Error: ${result.error}</div>`);
             } else {
+                // Clean up markdown code block if present
+                let analysis = result.analysis || '';
+                // Remove triple backticks and optional "markdown" language tag
+                analysis = analysis.trim().replace(/^```(?:markdown)?\s*/i, '').replace(/\s*```$/, '');
+                let html = '';
+                if (window.marked) {
+                    html = window.marked.parse(analysis);
+                } else {
+                    // fallback: show as pre if marked is not loaded
+                    html = `<pre style="white-space: pre-wrap; font-size: 13px; line-height: 1.5; margin: 0; color: #C0C0C0;">${this.escapeHtml(analysis)}</pre>`;
+                }
                 this.showToolResultBox(`
-                    <div style="background: rgba(30, 27, 69, 0.3); padding: 16px; border-radius: 6px; border: 1px solid rgba(75, 0, 130, 0.3);">
-                        <pre style="white-space: pre-wrap; font-size: 13px; line-height: 1.5; margin: 0; color: #C0C0C0;">${this.escapeHtml(result.analysis)}</pre>
+                    <div class="analysis-section">
+                        <div class="analysis-title">🔍 Email Analysis</div>
+                        <div class="markdown-body">${html}</div>
                     </div>
                 `);
             }
