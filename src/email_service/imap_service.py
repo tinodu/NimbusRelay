@@ -148,32 +148,8 @@ class IMAPEmailService(IEmailService):
                             continue
                     except Exception as e:
                         print(f"\033[91m[DEBUG] EXAMINE failed for {folder_name} with error: {e}, connection id: {id(self.connection)}\033[0m")
-                        # Always reset the connection after any EXAMINE failure (exception or not-OK)
-                        self.disconnect()
-                        if not self.connect(self.config):
-                            print(f"\033[91m[DEBUG] Reconnect failed after EXAMINE error for {folder_name}\033[0m")
-                            continue  # Skip this folder
-                        # After reconnect, verify connection is valid
-                        try:
-                            noop_status, noop_response = self.connection.noop()
-                            print(f"\033[91m[DEBUG] NOOP after reconnect: status={noop_status}, response={noop_response!r}\033[0m")
-                        except Exception as noop_e:
-                            print(f"\033[91m[DEBUG] NOOP failed after reconnect: {noop_e}\033[0m")
-                            continue  # Skip this folder
-                        try:
-                            print(f"[DEBUG] Retrying SELECT (readonly=False) for {folder_name} on connection id: {id(self.connection)}")
-                            test_status, test_response = self.connection.select(folder_name, readonly=False)
-                            print(f"[DEBUG] SELECT response for {folder_name}: status={test_status}, response={test_response!r}")
-                            if isinstance(test_response, bytes):
-                                test_response_str = test_response.decode(errors='ignore')
-                            else:
-                                test_response_str = str(test_response)
-                            if test_status != 'OK' or 'HEADER_FROM_DIFFERENT_DOMAINS' in test_response_str:
-                                print(f"\033[91mSuspicious or invalid IMAP response for {folder_name} (SELECT): {test_status}, {test_response_str}\033[0m")
-                                continue  # Skip this folder
-                        except Exception as e2:
-                            print(f"\033[91m[DEBUG] SELECT also failed for {folder_name} with error: {e2}, connection id: {id(self.connection)}\033[0m")
-                            continue  # Skip this folder
+                        # Fix: Do not disconnect or block, just skip this folder and continue
+                        continue
                     if test_status == 'OK':
                         print(f"[DEBUG] Found allowed folder on server: {folder_name}, connection id: {id(self.connection)}")
                         
