@@ -148,8 +148,27 @@ class IMAPEmailService(IEmailService):
                             continue
                     except Exception as e:
                         print(f"\033[91m[DEBUG] EXAMINE failed for {folder_name} with error: {e}, connection id: {id(self.connection)}\033[0m")
-                        # Fix: Do not disconnect or block, just skip this folder and continue
-                        continue
+                        # New logic: reset connection and retry once, then skip if still fails
+                        # Forceful: disconnect, reconnect, and retry EXAMINE once. If still fails, disconnect, reconnect, and continue.
+                        self.disconnect()
+                        connected = self.connect(self.config)
+                        if not connected:
+                            print(f"\033[91m[DEBUG] Reconnect failed after EXAMINE error for {folder_name}\033[0m")
+                            continue  # Skip this folder
+                        try:
+                            print(f"[DEBUG] Retrying EXAMINE (readonly=True) for {folder_name} after reconnect, connection id: {id(self.connection)}")
+                            retry_status, retry_response = self.connection.select(folder_name, readonly=True)
+                            print(f"[DEBUG] Retry EXAMINE response for {folder_name}: status={retry_status}, response={retry_response!r}")
+                            if retry_status != 'OK':
+                                print(f"\033[91m[DEBUG] Retry EXAMINE failed for {folder_name}, forcefully resetting connection and skipping folder\033[0m")
+                                self.disconnect()
+                                self.connect(self.config)
+                                continue
+                        except Exception as retry_e:
+                            print(f"\033[91m[DEBUG] Retry EXAMINE exception for {folder_name}: {retry_e}, forcefully resetting connection and skipping folder\033[0m")
+                            self.disconnect()
+                            self.connect(self.config)
+                            continue
                     if test_status == 'OK':
                         print(f"[DEBUG] Found allowed folder on server: {folder_name}, connection id: {id(self.connection)}")
                         

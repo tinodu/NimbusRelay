@@ -76,21 +76,9 @@ class AzureAIService(IAIService):
 
         print("AI service client created successfully")
         
-        # Test the connection with a simple call
-        print("Testing connection with a simple API call...")
-        try:
-            test_response = self.client.chat.completions.create(
-                model=config.azure_deployment,
-                messages=[{"role": "user", "content": "Hello"}],
-                max_tokens=5,
-                temperature=0
-            )
-            print("AI service connection test successful!")
-            return True
-        except Exception as test_error:
-            print(f"AI service connection test failed: {test_error}")
-            print(f"Test error type: {type(test_error).__name__}")
-            return False
+        # Skipping test API call to avoid slow first load
+        print("Skipping Azure OpenAI test API call for faster startup.")
+        return True
     
     def is_connected(self) -> bool:
         """Check if service is connected"""

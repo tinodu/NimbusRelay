@@ -1,3 +1,29 @@
+// Persist connection config before refresh and restore after reload
+
+window.addEventListener('beforeunload', () => {
+    // Save config to localStorage if available
+    if (window.nimbusConfig) {
+        localStorage.setItem('nimbusConfig', JSON.stringify(window.nimbusConfig));
+    }
+    // Optionally, call disconnect API to clean up server-side
+    navigator.sendBeacon && navigator.sendBeacon('/api/disconnect');
+});
+
+window.addEventListener('load', () => {
+    // Restore config from localStorage and reconnect if needed
+    const configStr = localStorage.getItem('nimbusConfig');
+    if (configStr) {
+        try {
+            window.nimbusConfig = JSON.parse(configStr);
+            // Auto-reconnect using saved config
+            if (window.nimbusConfig && typeof connectServices === 'function') {
+                connectServices();
+            }
+        } catch (e) {
+            console.warn('Failed to restore Nimbus config from localStorage:', e);
+        }
+    }
+});
 /**
  * NimbusRelay - Imperial Email Management Application
  * Beautiful, minimalistic email client with AI-powered features
@@ -965,7 +991,6 @@ console.log('[DEBUG] Sanitized HTML body:', this.sanitizeHtml(email.html_body));
             if (button) {
                 button.disabled = true;
                 var originalContent = button.innerHTML;
-                // Do not change button.innerHTML; keep icon + text visible
             }
             this.showToolResultBox('<div class="loading"><div class="spinner"></div>Generating draft response...</div>');
             
@@ -997,25 +1022,152 @@ console.log('[DEBUG] Sanitized HTML body:', this.sanitizeHtml(email.html_body));
             
             if (button) {
                 button.disabled = false;
-                // No need to restore innerHTML; it was never changed
             }
             
-            if (draftResult.error) {
-                this.showToolResultBox(`<div class="status-error" style="padding: 12px; border-radius: 6px;">Error: ${draftResult.error}</div>`);
-            } else {
-                this.showToolResultBox(`
-                    <div style="background: rgba(30, 27, 69, 0.3); padding: 16px; border-radius: 6px; border: 1px solid rgba(75, 0, 130, 0.3);">
-                        <div style="margin-bottom: 12px; font-weight: 600; color: #A88EBC;">Generated Draft:</div>
-                        <pre style="white-space: pre-wrap; font-size: 13px; line-height: 1.5; margin: 0; color: #E6E6E6;">${this.escapeHtml(draftResult.draft)}</pre>
-                    </div>
-                `);
+            // Compose quoted original email (plain text, modern style)
+            function quoteEmail(text) {
+                if (!text) return '';
+                return text.split('\n').map(line => '> ' + line).join('\n');
             }
+            // Prefer text_body, fallback to body
+            const originalBody = email.text_body || email.body || '';
+            const quotedOriginal = quoteEmail(originalBody);
+
+            // Compose the content for the editor
+            const draftText = draftResult.draft || '';
+            const combinedContent = draftText + '\n\n' + quotedOriginal;
+
+            // Create a full-screen modal dialog for the editor
+            const modalHtml = `
+                <div id="draftEditorModal" style="
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    background: rgba(0, 0, 0, 0.9);
+                    backdrop-filter: blur(5px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 2000;
+                ">
+                    <div style="
+                        background: #1A1A1A;
+                        border: 2px solid #4B0082;
+                        border-radius: 12px;
+                        width: 90vw;
+                        max-width: 1200px;
+                        height: 90vh;
+                        display: flex;
+                        flex-direction: column;
+                        box-shadow: 0 16px 32px rgba(75, 0, 130, 0.4);
+                    ">
+                        <div style="
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            padding: 20px 24px;
+                            border-bottom: 1px solid rgba(75, 0, 130, 0.3);
+                            flex-shrink: 0;
+                        ">
+                            <h2 style="color: #A88EBC; margin: 0; font-size: 20px;">✍️ Edit Draft Response</h2>
+                            <fast-button id="closeDraftEditor" appearance="stealth" style="padding: 8px;">✖</fast-button>
+                        </div>
+                        <div style="
+                            flex: 1;
+                            padding: 24px;
+                            display: flex;
+                            flex-direction: column;
+                            overflow: hidden;
+                            box-sizing: border-box;
+                        ">
+                            <textarea id="draftRichEditor" style="
+                                flex: 1;
+                                width: 100%;
+                                height: 100%;
+                                font-size: 16px;
+                                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                                resize: none;
+                                box-sizing: border-box;
+                                background: #0F0F0F;
+                                border: 1px solid rgba(75, 0, 130, 0.3);
+                                border-radius: 6px;
+                                color: #E6E6E6;
+                                padding: 16px;
+                                outline: none;
+                                transition: border-color 0.2s ease;
+                            " onfocus="this.style.borderColor='#A88EBC'" onblur="this.style.borderColor='rgba(75, 0, 130, 0.3)'"></textarea>
+                        </div>
+                        <div style="
+                            display: flex;
+                            gap: 12px;
+                            justify-content: flex-end;
+                            padding: 20px 24px;
+                            border-top: 1px solid rgba(75, 0, 130, 0.3);
+                            flex-shrink: 0;
+                        ">
+                            <fast-button id="cancelDraft" appearance="stealth">Cancel</fast-button>
+                            <fast-button id="sendDraft" appearance="accent">Send Draft</fast-button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Insert the modal into the body
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+            // Set up event listeners and populate content
+            setTimeout(() => {
+                const editor = document.getElementById('draftRichEditor');
+                const closeBtn = document.getElementById('closeDraftEditor');
+                const cancelBtn = document.getElementById('cancelDraft');
+                const sendBtn = document.getElementById('sendDraft');
+                const modal = document.getElementById('draftEditorModal');
+
+                if (editor) {
+                    editor.value = combinedContent;
+                    editor.focus();
+                }
+
+                // Close modal function
+                const closeModal = () => {
+                    if (modal) {
+                        modal.remove();
+                    }
+                };
+
+                // Set up close handlers
+                if (closeBtn) closeBtn.addEventListener('click', closeModal);
+                if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+                if (sendBtn) {
+                    sendBtn.addEventListener('click', () => {
+                        // TODO: Implement send functionality
+                        console.log('Sending draft:', editor.value);
+                        closeModal();
+                    });
+                }
+
+                // Close on Escape key
+                const handleEscape = (e) => {
+                    if (e.key === 'Escape') {
+                        closeModal();
+                        document.removeEventListener('keydown', handleEscape);
+                    }
+                };
+                document.addEventListener('keydown', handleEscape);
+
+                console.log('[DEBUG] Draft editor modal created and displayed');
+            }, 100);
+
+            // Hide the tool result box
+            this.hideToolResultBox();
+
         } catch (error) {
             console.error('Failed to generate draft:', error);
             const button = document.getElementById('generateDraftBtn');
             if (button) {
                 button.disabled = false;
-                // No need to restore innerHTML; it was never changed
             }
             this.showToolResultBox('<div class="status-error" style="padding: 12px; border-radius: 6px;">Failed to generate draft</div>');
         }

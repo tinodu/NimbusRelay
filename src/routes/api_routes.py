@@ -93,6 +93,16 @@ def register_api_routes(app: Flask) -> None:
                 
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/disconnect', methods=['POST'])
+    def disconnect_services():
+        """Disconnect from email and AI services, clean up sessions."""
+        try:
+            if hasattr(service_manager, "email_service") and service_manager.email_service:
+                service_manager.email_service.disconnect()
+            return jsonify({"status": "disconnected"})
+        except Exception as e:
+            return jsonify({"status": "error", "error": str(e)}), 500
     
     @app.route('/api/folders')
     def list_folders():
