@@ -326,10 +326,8 @@ class NimbusRelayApp {
      * Load initial data (folders and emails)
      */
     async loadInitialData() {
-        await Promise.all([
-            this.loadFolders(),
-            this.loadEmails()
-        ]);
+        await this.loadFolders();
+        await this.loadEmails();
         // Load folder counts after folders are loaded
         await this.loadFolderCounts();
     }
@@ -447,7 +445,7 @@ class NimbusRelayApp {
             emailList.innerHTML = `
                 <div style="padding: 40px; text-align: center; color: #777777;">
                     <div style="font-size: 48px; margin-bottom: 16px;">📬</div>
-                    <div style="font-size: 16px; margin-bottom: 8px;">No emails found</div>
+                    <div style="font-size: 16px; margin-bottom: 8px;">No emails found in this folder</div>
                     <div style="font-size: 12px; color: #555555;">${message}</div>
                 </div>
             `;

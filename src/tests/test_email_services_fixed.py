@@ -8,7 +8,7 @@ Comprehensive tests for e        for folder_info, expected_name in folder_tests:
 import pytest
 from unittest.mock import Mock, patch
 from src.email_service.interfaces import IEmailService, IFolderParser, IEmailParser
-from src.email_service.imap_service import IMAPEmailService
+from src.email_service.imap_email_service import IMAPEmailService
 from src.email_service.folder_parser import IMAPFolderParser
 from src.email_service.message_parser import EmailMessageParser
 from src.email_service.utils import EmailFolderUtils

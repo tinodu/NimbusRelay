@@ -23,7 +23,10 @@ try:
     from src.config.environment import EnvironmentManager
     from src.models.email_models import EmailFolder, EmailMessage, SpamAnalysisResult, ConnectionConfig
     from src.email_service.interfaces import IEmailService, IFolderParser, IEmailParser
-    from src.email_service.imap_service import IMAPEmailService
+    from src.email_service.imap_email_service import IMAPEmailService
+    from src.email_service.imap_connection import IMAPConnectionManager
+    from src.email_service.imap_folder_service import IMAPFolderService
+    from src.email_service.imap_debug_service import IMAPDebugService
     from src.email_service.folder_parser import IMAPFolderParser
     from src.email_service.message_parser import EmailMessageParser
     from src.email_service.utils import EmailFolderUtils

@@ -6,7 +6,9 @@ Follows the Facade Pattern to provide simplified interface
 from typing import List, Dict, Any, Optional
 from src.email_service.interfaces import IEmailService
 from src.ai.interfaces import IAIService
-from src.email_service.imap_service import IMAPEmailService
+from src.email_service.imap_email_service import IMAPEmailService
+from src.email_service.imap_folder_service import IMAPFolderService
+from src.email_service.imap_connection import IMAPConnectionManager
 from src.ai.azure_service import AzureAIService
 from src.models.email_models import EmailFolder, EmailMessage, SpamAnalysisResult, ConnectionConfig
 
@@ -19,6 +21,7 @@ class ServiceManager:
     
     def __init__(self, 
                  email_service: IEmailService = None,
+                 folder_service: IMAPFolderService = None,
                  ai_service: IAIService = None):
         """
         Initialize service manager with dependency injection
@@ -28,7 +31,8 @@ class ServiceManager:
             ai_service: AI service implementation
         """
         # Dependency injection allows for easy testing and service swapping
-        self.email_service = email_service or IMAPEmailService()
+        self.email_service = email_service or IMAPEmailService(IMAPConnectionManager())
+        self.folder_service = folder_service or IMAPFolderService(self.email_service.connection_manager)
         self.ai_service = ai_service or AzureAIService()
         
         self._connection_config: Optional[ConnectionConfig] = None
@@ -55,15 +59,22 @@ class ServiceManager:
             
             config = ConnectionConfig.from_dict(config_dict)
             self._connection_config = config
-            
+
+            # Set config on the connection manager before connecting
+            if hasattr(self.email_service, 'connection_manager'):
+                self.email_service.connection_manager.config = config
+
             # Connect to email service
             print("Attempting to connect to email service...")
-            email_connected = self.email_service.connect(config)
-            if not email_connected:
-                print("Email service connection failed")
+            email_connected = False
+            try:
+                self.email_service.connect()
+                email_connected = True
+            except Exception as e:
+                print(f"Email service connection failed: {e}")
                 return {
                     'success': False,
-                    'error': 'Failed to connect to email service'
+                    'error': f'Failed to connect to email service: {e}'
                 }
             print("Email service connected successfully")
             
@@ -106,17 +117,20 @@ class ServiceManager:
             Dict: Folders data or error
         """
         try:
-            if not self.email_service.is_connected():
+            print(f"[ServiceManager] get_folders called with include_hidden={include_hidden}")
+            if not self.folder_service.is_connected():
+                print("[ServiceManager] Folder service is not connected!")
                 return {
                     'error': 'Email service not connected. Please connect first.'
                 }
-            
-            folders = self.email_service.list_folders(include_hidden)
+            print("[ServiceManager] Folder service is connected. Calling list_folders...")
+            folders = self.folder_service.list_folders(include_hidden)
+            print(f"[ServiceManager] list_folders returned {len(folders)} folders.")
             return {
                 'folders': [folder.to_dict() for folder in folders]
             }
-            
         except Exception as e:
+            print(f"[ServiceManager] Exception in get_folders: {e}")
             return {'error': str(e)}
     
     def get_folder_counts(self) -> Dict[str, Any]:
@@ -127,20 +141,20 @@ class ServiceManager:
             Dict: Folder counts or error
         """
         try:
-            if not self.email_service.is_connected():
+            if not self.folder_service.is_connected():
                 return {
                     'error': 'Email service not connected. Please connect first.'
                 }
             
             # Get all folders
-            folders = self.email_service.list_folders(include_hidden=False)
+            folders = self.folder_service.list_folders(include_hidden=False)
             folder_counts = {}
             
             # Get count for each folder
             for folder in folders:
                 try:
-                    # Use the get_folder_count method to get accurate counts
-                    count = self.email_service.get_folder_count(folder.name)
+                    # Use the get_folder_count method from the folder_service
+                    count = self.folder_service.get_folder_count(folder.name)
                     folder_counts[folder.name] = count
                 except Exception as e:
                     print(f"Error getting count for folder {folder.name}: {e}")
