@@ -67,6 +67,12 @@ python app.py
 | `IMAP_PORT` | IMAP port (usually 993) | `993` |
 | `IMAP_USERNAME` | Your email address | `user@example.com` |
 | `IMAP_PASSWORD` | Email account password or app password | `password123` |
+| `SMTP_SERVER` | SMTP server hostname (auto-configured) | `smtp.gmail.com` |
+| `SMTP_PORT` | SMTP port (usually 587) | `587` |
+| `SMTP_USERNAME` | SMTP authentication username | `user@example.com` |
+| `SMTP_PASSWORD` | SMTP authentication password | `password123` |
+| `SMTP_SENDER_EMAIL` | Full sender email address for outgoing emails | `sender@domain.com` |
+| `SMTP_USE_TLS` | Enable TLS encryption | `true` |
 
 ## 🏗️ Architecture
 

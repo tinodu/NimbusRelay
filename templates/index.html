@@ -411,6 +411,31 @@
             </div>
             
             <div class="config-group">
+                <div class="config-group-title">📤 SMTP Configuration (for sending emails)</div>
+                <fast-text-field id="smtpServer" placeholder="SMTP Server (e.g., smtp.gmail.com)">
+                    <label slot="label">SMTP Server</label>
+                </fast-text-field>
+                <fast-text-field id="smtpPort" placeholder="587" value="587">
+                    <label slot="label">SMTP Port</label>
+                </fast-text-field>
+                <fast-text-field id="smtpUsername" placeholder="your-email@domain.com">
+                    <label slot="label">SMTP Username</label>
+                </fast-text-field>
+                <fast-text-field id="smtpPassword" type="password" placeholder="Your SMTP password or app password">
+                    <label slot="label">SMTP Password</label>
+                </fast-text-field>
+                <fast-text-field id="smtpSenderEmail" placeholder="sender@domain.com">
+                    <label slot="label">Sender Email Address</label>
+                </fast-text-field>
+                <div style="font-size: 12px; color: #999; margin-top: 4px; margin-bottom: 12px;">
+                    Optional: Full sender email address for outgoing emails. If left empty, will use IMAP username.
+                </div>
+                <fast-checkbox id="smtpUseTls" checked>
+                    Use TLS/STARTTLS
+                </fast-checkbox>
+            </div>
+            
+            <div class="config-group">
                 <div class="config-group-title">🤖 Azure OpenAI Configuration</div>
                 <fast-text-field id="azureEndpoint" placeholder="https://your-resource.openai.azure.com/">
                     <label slot="label">Azure OpenAI Endpoint</label>

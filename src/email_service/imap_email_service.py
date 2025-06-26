@@ -4,7 +4,7 @@ IMAP Email Logic Service
 Encapsulates email-related IMAP operations, using an IMAPConnectionManager for connection handling.
 """
 
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from src.models.email_models import EmailMessage
 from src.email_service.interfaces import IEmailParser
 from src.email_service.message_parser import EmailMessageParser
@@ -264,3 +264,85 @@ class IMAPEmailService:
         Check if the IMAP connection is currently established.
         """
         return self.connection_manager.is_connected()
+    
+    def save_draft(self, draft, folder: str = "INBOX.Drafts") -> Dict[str, Any]:
+        """
+        Save a draft email to the specified folder (typically Drafts)
+        
+        Args:
+            draft: DraftEmail object or dict containing draft data
+            folder: Folder to save draft to (default: INBOX.Drafts)
+            
+        Returns:
+            Dict: Result of save operation
+        """
+        try:
+            from src.models.email_models import DraftEmail
+            import email.mime.text
+            import email.mime.multipart
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
+            from datetime import datetime
+            import email.utils
+            import imaplib
+            
+            conn = self.connection_manager.connection
+            if not conn:
+                return {'error': 'IMAP connection not available'}
+            
+            # Convert dict to DraftEmail if needed
+            if isinstance(draft, dict):
+                draft = DraftEmail.from_dict(draft)
+            
+            # Create email message
+            msg = MIMEMultipart('alternative')
+            msg['From'] = self.connection_manager.config.imap_username if self.connection_manager.config else ""
+            msg['To'] = draft.to
+            msg['Subject'] = draft.subject or '(no subject)'
+            msg['Date'] = email.utils.formatdate(localtime=True)
+            
+            # Add CC and BCC if provided
+            if draft.cc:
+                msg['Cc'] = draft.cc
+            if draft.bcc:
+                msg['Bcc'] = draft.bcc
+            
+            # Add message body
+            if draft.body:
+                text_part = MIMEText(draft.body, 'plain', 'utf-8')
+                msg.attach(text_part)
+            
+            # Convert message to string
+            draft_content = msg.as_string()
+            
+            # Ensure the drafts folder exists
+            try:
+                conn.select(folder)
+            except imaplib.IMAP4.error:
+                # Try to create the folder if it doesn't exist
+                try:
+                    conn.create(folder)
+                    print(f"Created drafts folder: {folder}")
+                except Exception as create_error:
+                    print(f"Failed to create drafts folder: {create_error}")
+                    return {'error': f'Drafts folder "{folder}" does not exist and could not be created'}
+            
+            # Append draft to folder
+            result = conn.append(folder, None, None, draft_content.encode('utf-8'))
+            
+            if result[0] == 'OK':
+                print(f"Draft saved successfully to {folder}")
+                return {
+                    'success': True,
+                    'message': f'Draft saved to {folder}',
+                    'folder': folder
+                }
+            else:
+                error_msg = f"Failed to save draft: {result[1] if len(result) > 1 else 'Unknown error'}"
+                print(error_msg)
+                return {'error': error_msg}
+                
+        except Exception as e:
+            error_msg = f"Error saving draft: {str(e)}"
+            print(error_msg)
+            return {'error': error_msg}

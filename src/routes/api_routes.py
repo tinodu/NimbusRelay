@@ -53,7 +53,8 @@ def register_api_routes(app: Flask) -> None:
             return jsonify({
                 'configured': len(missing_vars) == 0,
                 'missing_vars': missing_vars,
-                'current_config': {k: bool(v) for k, v in env_vars.items()}
+                'current_config': {k: bool(v) for k, v in env_vars.items()},
+                'values': env_vars  # Add actual values for populating the form
             })
         except Exception as e:
             return jsonify({'error': str(e)}), 500
@@ -284,3 +285,53 @@ def register_api_routes(app: Flask) -> None:
             return jsonify({'raw': raw})
         except Exception as e:
             return jsonify({'error': str(e)}), 500
+
+    @app.route('/api/save-draft', methods=['POST'])
+    def save_draft():
+        """Save draft email to IMAP drafts folder"""
+        try:
+            data = request.get_json()
+            print(f"[SAVE DRAFT API] Received request: {data}")
+            
+            if not data:
+                print("[SAVE DRAFT API] No data provided")
+                return jsonify({'error': 'No data provided'}), 400
+            
+            result = service_manager.save_draft(data)
+            
+            if 'error' in result:
+                print(f"[SAVE DRAFT API] Error in save operation: {result['error']}")
+                return jsonify(result), 400
+            
+            print(f"[SAVE DRAFT API] Successfully saved draft: {result}")
+            return jsonify(result)
+            
+        except Exception as e:
+            error_msg = str(e)
+            print(f"[SAVE DRAFT API] Exception in save_draft: {error_msg}")
+            return jsonify({'error': error_msg}), 500
+    
+    @app.route('/api/send-email', methods=['POST'])
+    def send_email():
+        """Send email immediately via SMTP"""
+        try:
+            data = request.get_json()
+            print(f"[SEND EMAIL API] Received request: {data}")
+            
+            if not data:
+                print("[SEND EMAIL API] No data provided")
+                return jsonify({'error': 'No data provided'}), 400
+            
+            result = service_manager.send_email(data)
+            
+            if 'error' in result:
+                print(f"[SEND EMAIL API] Error in send operation: {result['error']}")
+                return jsonify(result), 400
+            
+            print(f"[SEND EMAIL API] Successfully sent email: {result}")
+            return jsonify(result)
+            
+        except Exception as e:
+            error_msg = str(e)
+            print(f"[SEND EMAIL API] Exception in send_email: {error_msg}")
+            return jsonify({'error': error_msg}), 500

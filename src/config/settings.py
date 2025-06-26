@@ -33,6 +33,12 @@ class Config:
             'IMAP_PORT': os.getenv('IMAP_PORT', '993'),
             'IMAP_USERNAME': os.getenv('IMAP_USERNAME', ''),
             'IMAP_PASSWORD': os.getenv('IMAP_PASSWORD', ''),
+            'SMTP_SERVER': os.getenv('SMTP_SERVER', ''),
+            'SMTP_PORT': os.getenv('SMTP_PORT', '587'),
+            'SMTP_USERNAME': os.getenv('SMTP_USERNAME', ''),
+            'SMTP_PASSWORD': os.getenv('SMTP_PASSWORD', ''),
+            'SMTP_SENDER_EMAIL': os.getenv('SMTP_SENDER_EMAIL', ''),
+            'SMTP_USE_TLS': os.getenv('SMTP_USE_TLS', 'true'),
         }
 
 

@@ -193,7 +193,7 @@ class NimbusRelayApp {
     /**
      * Show configuration modal
      */
-    showConfigModal(missingVars = []) {
+    async showConfigModal(missingVars = []) {
         const modal = document.getElementById('configModal');
         const mainInterface = document.getElementById('mainInterface');
         
@@ -203,6 +203,47 @@ class NimbusRelayApp {
         
         if (mainInterface) {
             mainInterface.classList.remove('configured');
+        }
+        
+        // Load current configuration values and populate the form
+        try {
+            const response = await fetch('/api/config');
+            const config = await response.json();
+            
+            if (config.values) {
+                // Populate form fields with current values
+                const fieldMappings = {
+                    'IMAP_SERVER': 'imapServer',
+                    'IMAP_PORT': 'imapPort', 
+                    'IMAP_USERNAME': 'imapUsername',
+                    'IMAP_PASSWORD': 'imapPassword',
+                    'SMTP_SERVER': 'smtpServer',
+                    'SMTP_PORT': 'smtpPort',
+                    'SMTP_USERNAME': 'smtpUsername',
+                    'SMTP_PASSWORD': 'smtpPassword',
+                    'SMTP_SENDER_EMAIL': 'smtpSenderEmail',
+                    'SMTP_USE_TLS': 'smtpUseTls',
+                    'AZURE_OPENAI_ENDPOINT': 'azureEndpoint',
+                    'AZURE_OPENAI_API_KEY': 'azureApiKey',
+                    'AZURE_OPENAI_DEPLOYMENT': 'azureDeployment',
+                    'AZURE_OPENAI_API_VERSION': 'azureApiVersion'
+                };
+                
+                for (const [envVar, fieldId] of Object.entries(fieldMappings)) {
+                    const field = document.getElementById(fieldId);
+                    if (field && config.values[envVar]) {
+                        if (fieldId === 'smtpUseTls') {
+                            // Handle checkbox
+                            field.checked = config.values[envVar].toLowerCase() === 'true';
+                        } else {
+                            // Handle text fields
+                            field.value = config.values[envVar];
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('Could not load current configuration values:', error);
         }
         
         // Highlight missing variables
@@ -251,6 +292,12 @@ class NimbusRelayApp {
                 'IMAP_PORT': document.getElementById('imapPort').value,
                 'IMAP_USERNAME': document.getElementById('imapUsername').value,
                 'IMAP_PASSWORD': document.getElementById('imapPassword').value,
+                'SMTP_SERVER': document.getElementById('smtpServer').value,
+                'SMTP_PORT': document.getElementById('smtpPort').value,
+                'SMTP_USERNAME': document.getElementById('smtpUsername').value,
+                'SMTP_PASSWORD': document.getElementById('smtpPassword').value,
+                'SMTP_SENDER_EMAIL': document.getElementById('smtpSenderEmail').value,
+                'SMTP_USE_TLS': document.getElementById('smtpUseTls').checked ? 'true' : 'false',
                 'AZURE_OPENAI_ENDPOINT': document.getElementById('azureEndpoint').value,
                 'AZURE_OPENAI_API_KEY': document.getElementById('azureApiKey').value,
                 'AZURE_OPENAI_DEPLOYMENT': document.getElementById('azureDeployment').value,
@@ -1171,7 +1218,7 @@ console.log('[DEBUG] Sanitized HTML body:', this.sanitizeHtml(email.html_body));
                         ">
                             <fast-button id="cancelDraft" appearance="stealth">Cancel</fast-button>
                             <fast-button id="saveDraft" appearance="neutral">💾 Save Draft</fast-button>
-                            <fast-button id="sendDraft" appearance="accent">📨 Send Reply</fast-button>
+                            <fast-button id="sendDraft" appearance="accent">🚀 Send Reply</fast-button>
                         </div>
                     </div>
                 </div>
@@ -1209,7 +1256,7 @@ console.log('[DEBUG] Sanitized HTML body:', this.sanitizeHtml(email.html_body));
                 if (closeBtn) closeBtn.addEventListener('click', closeModal);
                 if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
                 if (saveDraftBtn) {
-                    saveDraftBtn.addEventListener('click', () => {
+                    saveDraftBtn.addEventListener('click', async () => {
                         // Get email field values
                         const toField = document.getElementById('draftTo');
                         const ccField = document.getElementById('draftCc');
@@ -1217,23 +1264,61 @@ console.log('[DEBUG] Sanitized HTML body:', this.sanitizeHtml(email.html_body));
                         const subjectField = document.getElementById('draftSubject');
                         
                         const emailData = {
-                            to: toField ? toField.value : '',
-                            cc: ccField ? ccField.value : '',
-                            bcc: bccField ? bccField.value : '',
-                            subject: subjectField ? subjectField.value : '',
+                            to: toField ? toField.value.trim() : '',
+                            cc: ccField ? ccField.value.trim() : '',
+                            bcc: bccField ? bccField.value.trim() : '',
+                            subject: subjectField ? subjectField.value.trim() : '',
                             body: editor ? editor.value : ''
                         };
                         
-                        // Save as draft
-                        console.log('Saving draft with email data:', emailData);
+                        // Validate required fields
+                        if (!emailData.to) {
+                            this.showStatus('Please enter a recipient email address', 'error');
+                            return;
+                        }
                         
-                        // Show success message and close
-                        this.showStatus('Draft saved successfully', 'success');
-                        closeModal();
+                        try {
+                            // Disable button and show loading state
+                            saveDraftBtn.disabled = true;
+                            const originalText = saveDraftBtn.innerHTML;
+                            saveDraftBtn.innerHTML = '💾 Saving...';
+                            
+                            console.log('Saving draft with email data:', emailData);
+                            
+                            // Call API to save draft
+                            const response = await fetch('/api/save-draft', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(emailData),
+                            });
+                            
+                            const result = await response.json();
+                            
+                            // Restore button state
+                            saveDraftBtn.disabled = false;
+                            saveDraftBtn.innerHTML = originalText;
+                            
+                            if (result.error) {
+                                this.showStatus(`Failed to save draft: ${result.error}`, 'error');
+                            } else {
+                                this.showStatus('Draft saved successfully to Drafts folder', 'success');
+                                closeModal();
+                            }
+                            
+                        } catch (error) {
+                            // Restore button state
+                            saveDraftBtn.disabled = false;
+                            saveDraftBtn.innerHTML = '💾 Save Draft';
+                            
+                            console.error('Error saving draft:', error);
+                            this.showStatus('Failed to save draft - network error', 'error');
+                        }
                     });
                 }
                 if (sendBtn) {
-                    sendBtn.addEventListener('click', () => {
+                    sendBtn.addEventListener('click', async () => {
                         // Get email field values
                         const toField = document.getElementById('draftTo');
                         const ccField = document.getElementById('draftCc');
@@ -1241,19 +1326,67 @@ console.log('[DEBUG] Sanitized HTML body:', this.sanitizeHtml(email.html_body));
                         const subjectField = document.getElementById('draftSubject');
                         
                         const emailData = {
-                            to: toField ? toField.value : '',
-                            cc: ccField ? ccField.value : '',
-                            bcc: bccField ? bccField.value : '',
-                            subject: subjectField ? subjectField.value : '',
+                            to: toField ? toField.value.trim() : '',
+                            cc: ccField ? ccField.value.trim() : '',
+                            bcc: bccField ? bccField.value.trim() : '',
+                            subject: subjectField ? subjectField.value.trim() : '',
                             body: editor ? editor.value : ''
                         };
                         
-                        // TODO: Implement actual send functionality via API
-                        console.log('Sending draft with email data:', emailData);
+                        // Validate required fields
+                        if (!emailData.to) {
+                            this.showStatus('Please enter a recipient email address', 'error');
+                            return;
+                        }
                         
-                        // Show success message
-                        this.showStatus('Draft prepared successfully', 'success');
-                        closeModal();
+                        // Confirm before sending
+                        const confirmSend = confirm(`Are you sure you want to send this email to ${emailData.to}?`);
+                        if (!confirmSend) {
+                            return;
+                        }
+                        
+                        try {
+                            // Disable button and show loading state
+                            sendBtn.disabled = true;
+                            const originalText = sendBtn.innerHTML;
+                            sendBtn.innerHTML = '🚀 Sending...';
+                            
+                            console.log('Sending email with data:', emailData);
+                            
+                            // Call API to send email
+                            const response = await fetch('/api/send-email', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(emailData),
+                            });
+                            
+                            const result = await response.json();
+                            
+                            // Restore button state
+                            sendBtn.disabled = false;
+                            sendBtn.innerHTML = originalText;
+                            
+                            if (result.error) {
+                                this.showStatus(`Failed to send email: ${result.error}`, 'error');
+                            } else {
+                                let message = `Email sent successfully to ${result.recipients ? result.recipients.length : 1} recipient(s)`;
+                                if (result.sent_copy_saved === false) {
+                                    message += ' (Note: Copy not saved to Sent folder)';
+                                }
+                                this.showStatus(message, 'success');
+                                closeModal();
+                            }
+                            
+                        } catch (error) {
+                            // Restore button state
+                            sendBtn.disabled = false;
+                            sendBtn.innerHTML = '🚀 Send Reply';
+                            
+                            console.error('Error sending email:', error);
+                            this.showStatus('Failed to send email - network error', 'error');
+                        }
                     });
                 }
 
@@ -1462,8 +1595,8 @@ console.log('[DEBUG] Sanitized HTML body:', this.sanitizeHtml(email.html_body));
     /**
      * Show settings modal
      */
-    showSettings() {
-        this.showConfigModal();
+    async showSettings() {
+        await this.showConfigModal();
     }
     
     /**
@@ -1694,6 +1827,11 @@ console.log('[DEBUG] Sanitized HTML body:', this.sanitizeHtml(email.html_body));
             'IMAP_PORT': 'imapPort',
             'IMAP_USERNAME': 'imapUsername',
             'IMAP_PASSWORD': 'imapPassword',
+            'SMTP_SERVER': 'smtpServer',
+            'SMTP_PORT': 'smtpPort',
+            'SMTP_USERNAME': 'smtpUsername',
+            'SMTP_PASSWORD': 'smtpPassword',
+            'SMTP_USE_TLS': 'smtpUseTls',
             'AZURE_OPENAI_ENDPOINT': 'azureEndpoint',
             'AZURE_OPENAI_API_KEY': 'azureApiKey',
             'AZURE_OPENAI_DEPLOYMENT': 'azureDeployment',
