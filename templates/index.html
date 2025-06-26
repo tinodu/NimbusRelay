@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NimbusRelay - Imperial Email Management</title>
+    
+    <!-- Microsoft FAST Components -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@microsoft/fast-components/dist/fast-components.js"></script>
+    
+    <!-- Custom Imperial Purple Theme CSS -->
+    <link rel="stylesheet" href="/static/css/imperial-theme.css">
+    
+    <!-- Socket.IO for real-time communication -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    
+    <!-- Application JavaScript -->
+    <script defer src="/static/js/app.js"></script>
+    
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        /* FAST Design System Token Overrides for Imperial Theme */
+        :root {
+            --accent-fill-rest: #4B0082;
+            --accent-fill-hover: #5D1A8B;
+            --accent-fill-active: #3A0066;
+            --accent-foreground-rest: #A88EBC;
+            --neutral-fill-rest: #1A1A1A;
+            --neutral-fill-hover: #2D2D2D;
+            --neutral-foreground-rest: #E6E6E6;
+            --neutral-stroke-rest: #4B0082;
+            --background: #0F0F0F;
+            --surface: #1E1E1E;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0F0F0F;
+            color: var(--neutral-foreground-rest);
+            overflow: hidden;
+        }
+        
+        .app-container {
+            display: grid;
+            grid-template-areas:
+                "header header header"
+                "sidebar emails main";
+            grid-template-columns: 250px 350px 1fr;
+            grid-template-rows: 60px 1fr;
+            height: 100vh;
+            gap: 1px;
+            background: #0A0A0A;
+        }
+        
+        .header {
+            grid-area: header;
+            background: #0F0F0F;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        
+        .logo {
+            font-size: 20px;
+            font-weight: 600;
+            color: #E6E6E6;
+            margin-right: 32px;
+            letter-spacing: -0.5px;
+        }
+        
+        .sidebar {
+            grid-area: sidebar;
+            background: rgba(30, 30, 30, 0.95);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(75, 0, 130, 0.3);
+            overflow-y: auto;
+        }
+        
+        .emails-list {
+            grid-area: emails;
+            background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(10px);
+            overflow-y: auto;
+            position: relative;
+            border-right: 1px solid rgba(75, 0, 130, 0.3);
+        }
+        
+        .main-content {
+            grid-area: main;
+            background: rgba(25, 25, 25, 0.95);
+            backdrop-filter: blur(10px);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .email-commands {
+            padding: 20px;
+            border-bottom: 1px solid rgba(75, 0, 130, 0.3);
+            background: rgba(75, 0, 130, 0.05);
+            flex-shrink: 0;
+        }
+        
+        .email-preview-area {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+        
+        /* Configuration Modal Styles */
+        .config-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .config-content {
+            background: linear-gradient(135deg, #1E1B45 0%, #2D2D2D 100%);
+            border: 2px solid #4B0082;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 16px 32px rgba(75, 0, 130, 0.4);
+        }
+        
+        .config-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #A88EBC;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        
+        .config-description {
+            color: #C0C0C0;
+            margin-bottom: 32px;
+            text-align: center;
+            line-height: 1.6;
+        }
+        
+        .config-group {
+            margin-bottom: 24px;
+        }
+        
+        .config-group-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #A88EBC;
+            margin-bottom: 16px;
+            border-bottom: 1px solid rgba(75, 0, 130, 0.3);
+            padding-bottom: 8px;
+        }
+        
+        /* Hide by default, show when configured */
+        .main-interface {
+            display: none;
+        }
+        
+        .main-interface.configured {
+            display: grid !important;
+        }
+        
+        /* Folder List Styles */
+        .folder-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+        
+        .folder-item:hover {
+            background: rgba(75, 0, 130, 0.1);
+            border-left-color: #4B0082;
+        }
+        
+        .folder-item.active {
+            background: rgba(75, 0, 130, 0.2);
+            border-left-color: #A88EBC;
+        }
+        
+        .folder-icon {
+            margin-right: 12px;
+            font-size: 16px;
+        }
+        
+        /* Email List Styles */
+        .email-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(75, 0, 130, 0.1);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            text-align: left;
+        }
+        
+        .email-item:hover {
+            background: rgba(75, 0, 130, 0.05);
+        }
+        
+        .email-item.selected {
+            background: rgba(75, 0, 130, 0.15);
+            border-left: 4px solid #A88EBC;
+            padding-left: 12px;
+        }
+        
+        .email-sender {
+            font-weight: 600;
+            color: #E6E6E6;
+            margin-bottom: 4px;
+        }
+        
+        .email-subject {
+            color: #C0C0C0;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .email-preview {
+            color: #999999;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .email-date {
+            font-size: 11px;
+            color: #777777;
+            margin-bottom: 4px;
+        }
+        
+        /* Loading States */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: #A88EBC;
+        }
+        
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 2px solid rgba(168, 142, 188, 0.3);
+            border-top: 2px solid #A88EBC;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 12px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Button Styles */
+        .imperial-button {
+            background: #1A1A1A;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: #E6E6E6;
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+        
+        .imperial-button:hover {
+            background: #2D2D2D;
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .imperial-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .imperial-button.active {
+            background: #4B0082 !important;
+            color: #fff !important;
+            border-color: #A88EBC !important;
+            box-shadow: 0 2px 8px rgba(75,0,130,0.15);
+        }
+        
+        /* Analysis Panel */
+        .analysis-section {
+            margin-bottom: 24px;
+            padding: 20px;
+            background: rgba(30, 27, 69, 0.3);
+            border: 1px solid rgba(75, 0, 130, 0.3);
+            border-radius: 8px;
+        }
+        
+        .analysis-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #A88EBC;
+            margin-bottom: 12px;
+        }
+        
+        .spam-result {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+        
+        .spam-result.spam {
+            background: rgba(220, 53, 69, 0.2);
+            border: 1px solid rgba(220, 53, 69, 0.5);
+            color: #ffb3ba;
+        }
+        
+        .spam-result.not-spam {
+            background: rgba(40, 167, 69, 0.2);
+            border: 1px solid rgba(40, 167, 69, 0.5);
+            color: #b3ffb3;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .app-container {
+                grid-template-columns: 220px 300px 1fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .app-container {
+                grid-template-areas:
+                    "header"
+                    "main";
+                grid-template-columns: 1fr;
+                grid-template-rows: 60px 1fr;
+            }
+            
+            .sidebar, .emails-list {
+                display: none;
+            }
+        }
+    </style>
+    <style>
+        .toolbar-group {
+            display: flex;
+            gap: 8px;
+            margin-right: 18px;
+        }
+        .main-toolbar .toolbar-group:last-child {
+            margin-right: 0;
+        }
+    </style>
+    <style>
+        .html-bg {
+            background: rgba(255,255,255,0.92);
+            color: #222 !important;
+            border-radius: 8px;
+            padding: 18px 20px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            overflow-x: auto;
+        }
+        .html-bg * {
+            color: #222 !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Debug Status Bar -->
+    <div id="debugStatus" style="position: fixed; top: 0; left: 0; right: 0; background: #4B0082; color: white; padding: 4px 12px; font-size: 12px; z-index: 9999; display: none;">
+        <span id="debugText">🌩️ NimbusRelay Loading...</span>
+        <button onclick="window.nimbusDebug?.forceShow()" style="float: right; background: transparent; border: 1px solid white; color: white; padding: 2px 8px; font-size: 10px; cursor: pointer;">Force Show</button>
+    </div>
+
+    <!-- Configuration Modal -->
+    <div id="configModal" class="config-modal">
+        <div class="config-content">
+            <div class="config-title">⚙️ NimbusRelay Configuration</div>
+            <div class="config-description">
+                Configure your email and AI service settings to begin using NimbusRelay's imperial email management experience.
+            </div>
+            
+            <div class="config-group">
+                <div class="config-group-title">📧 Email Configuration (IMAP)</div>
+                <fast-text-field id="imapServer" placeholder="IMAP Server (e.g., imap.gmail.com)">
+                    <label slot="label">IMAP Server</label>
+                </fast-text-field>
+                <fast-text-field id="imapPort" placeholder="993" value="993">
+                    <label slot="label">IMAP Port</label>
+                </fast-text-field>
+                <fast-text-field id="imapUsername" placeholder="your-email@domain.com">
+                    <label slot="label">Email Username</label>
+                </fast-text-field>
+                <fast-text-field id="imapPassword" type="password" placeholder="Your email password or app password">
+                    <label slot="label">Email Password</label>
+                </fast-text-field>
+            </div>
+            
+            <div class="config-group">
+                <div class="config-group-title">📤 SMTP Configuration (for sending emails)</div>
+                <fast-text-field id="smtpServer" placeholder="SMTP Server (e.g., smtp.gmail.com)">
+                    <label slot="label">SMTP Server</label>
+                </fast-text-field>
+                <fast-text-field id="smtpPort" placeholder="587" value="587">
+                    <label slot="label">SMTP Port</label>
+                </fast-text-field>
+                <fast-text-field id="smtpUsername" placeholder="your-email@domain.com">
+                    <label slot="label">SMTP Username</label>
+                </fast-text-field>
+                <fast-text-field id="smtpPassword" type="password" placeholder="Your SMTP password or app password">
+                    <label slot="label">SMTP Password</label>
+                </fast-text-field>
+                <fast-text-field id="smtpSenderEmail" placeholder="sender@domain.com">
+                    <label slot="label">Sender Email Address</label>
+                </fast-text-field>
+                <div style="font-size: 12px; color: #999; margin-top: 4px; margin-bottom: 12px;">
+                    Optional: Full sender email address for outgoing emails. If left empty, will use IMAP username.
+                </div>
+                <fast-checkbox id="smtpUseTls" checked>
+                    Use TLS/STARTTLS
+                </fast-checkbox>
+            </div>
+            
+            <div class="config-group">
+                <div class="config-group-title">🤖 Azure OpenAI Configuration</div>
+                <fast-text-field id="azureEndpoint" placeholder="https://your-resource.openai.azure.com/">
+                    <label slot="label">Azure OpenAI Endpoint</label>
+                </fast-text-field>
+                <fast-text-field id="azureApiKey" type="password" placeholder="Your Azure OpenAI API Key">
+                    <label slot="label">API Key</label>
+                </fast-text-field>
+                <fast-text-field id="azureDeployment" placeholder="gpt-4">
+                    <label slot="label">Deployment Name</label>
+                </fast-text-field>
+                <fast-text-field id="azureApiVersion" placeholder="2024-02-01" value="2024-02-01">
+                    <label slot="label">API Version</label>
+                </fast-text-field>
+            </div>
+            
+            <div style="text-align: center; margin-top: 32px;">
+                <fast-button id="saveConfigBtn" class="imperial-button">Save Configuration & Connect</fast-button>
+            </div>
+            
+            <div id="configStatus" style="margin-top: 16px; text-align: center;"></div>
+        </div>
+    </div>
+
+    <!-- Main Application Interface -->
+    <div class="app-container main-interface" id="mainInterface">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">🌩️ NimbusRelay</div>
+            <div style="margin-left: auto; display: flex; gap: 12px;">
+                <fast-button id="refreshBtn" appearance="stealth" style="background: transparent; border: 1px solid rgba(255, 255, 255, 0.1); color: #C0C0C0;">🔄 Refresh</fast-button>
+                <fast-button id="settingsBtn" appearance="stealth" style="background: transparent; border: 1px solid rgba(255, 255, 255, 0.1); color: #C0C0C0;">⚙️ Settings</fast-button>
+            </div>
+        </div>
+
+        <!-- Sidebar - Folder List -->
+        <div class="sidebar">
+            <div style="padding: 20px; border-bottom: 1px solid rgba(75, 0, 130, 0.3);">
+                <h3 style="color: #A88EBC; margin: 0; font-size: 16px;">📁 Folders</h3>
+            </div>
+            <div id="folderList">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading folders...
+                </div>
+            </div>
+        </div>
+
+        <!-- Email List (Second Left Panel) -->
+        <div class="emails-list">
+            <div style="padding: 20px; border-bottom: 1px solid rgba(75, 0, 130, 0.3);">
+                <h3 style="color: #A88EBC; margin: 0; font-size: 16px;" id="contentTitle">📧 Inbox</h3>
+            </div>
+            <!-- Compact folder-level commands toolbar -->
+            <div class="folder-toolbar" style="display: flex; gap: 8px; align-items: center; padding: 8px 12px 8px 20px; border-bottom: 1px solid rgba(75, 0, 130, 0.10); background: rgba(75, 0, 130, 0.03);">
+                <fast-button id="analyzeSpamBtn" size="small" title="Analyze all emails for spam">🛡️</fast-button>
+                <fast-button id="moveSpamBtn" size="small" title="Move spam to Junk">🗂️</fast-button>
+                <fast-button id="generateDraftsBtn" size="small" title="Generate drafts">✍️</fast-button>
+            </div>
+            <div id="emailList">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading emails...
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Compact Toolbar at Top (shows context-sensitive actions for selected email) -->
+            <!-- Compact Toolbar at Top (shows context-sensitive actions for selected email) -->
+            <div class="main-toolbar" style="display: flex; gap: 8px; align-items: center; padding: 8px 16px; border-bottom: 1px solid rgba(75, 0, 130, 0.10); background: rgba(75, 0, 130, 0.03); flex-shrink: 0;">
+                <div class="toolbar-group">
+                    <fast-button id="analyzeSpamSingleBtn" size="small" title="Analyze This Email">🛡️ Spam?</fast-button>
+                    <fast-button id="analyzeEmailBtn" size="small" title="Analyze Email Content">🔍 Analyze</fast-button>
+                    <fast-button id="generateDraftBtn" size="small" title="Generate Draft Response">✍️ Draft</fast-button>
+                </div>
+                <div class="toolbar-group">
+                    <fast-button id="showRawEmailBtn" size="small" title="Show RAW Email">🗒️ RAW</fast-button>
+                    <fast-button id="viewHtmlSourceBtn" size="small" style="display:none;">🧾 Source</fast-button>
+                </div>
+                <div class="toolbar-group">
+                    <fast-button id="togglePlainBtn" size="small" style="display:none;">📄 Plain</fast-button>
+                    <fast-button id="toggleHtmlBtn" size="small" style="display:none;">🌐 HTML</fast-button>
+                </div>
+            </div>
+            <!-- Tool Result Box (shown when a compact toolbar tool is used) -->
+            <div id="toolResultBox" style="display:none; margin: 0 16px 16px 16px; background: rgba(30,27,69,0.85); border: 1px solid #4B0082; border-radius: 8px; padding: 20px; position: relative;">
+                <button id="closeToolResultBox" style="position: absolute; top: 12px; right: 12px; background: transparent; border: none; color: #A88EBC; font-size: 18px; cursor: pointer;">✖</button>
+                <div id="toolResultContent"></div>
+            </div>
+            <!-- Email Preview Area -->
+            <div class="email-preview-area" id="emailDetails">
+                <div style="text-align: center; color: #777777; margin-top: 80px;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">📬</div>
+                    <div>Select an email to view details and AI analysis</div>
+                </div>
+                <!-- Email content toggle, injected dynamically -->
+                <div id="emailContentToggleContainer" style="display:none; margin-bottom: 16px; text-align: right;">
+                    <fast-button id="togglePlainBtn" class="imperial-button" appearance="stealth" style="margin-right: 8px;">Plain Text</fast-button>
+                    <fast-button id="toggleHtmlBtn" class="imperial-button" appearance="stealth" style="margin-right: 8px;">HTML</fast-button>
+                    <fast-button id="viewHtmlSourceBtn" class="imperial-button" appearance="stealth" style="margin-right: 0;">View HTML Source</fast-button>
+                </div>
+                <!-- FAST Rich Text Editor for Drafting -->
+                <div id="draftRichEditorContainer" style="display:none; margin-top: 24px;">
+                    <label for="draftRichEditor" style="color:#A88EBC; font-weight:600; margin-bottom:8px; display:block;">✍️ Edit Draft Response</label>
+                    <fast-text-area id="draftRichEditor" style="width:100%; min-height:220px; font-size:15px;"></fast-text-area>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Templates for dynamic content -->
+    <template id="folderTemplate">
+        <div class="folder-item" data-folder="">
+            <span class="folder-icon"></span>
+            <span class="folder-name"></span>
+        </div>
+    </template>
+
+    <template id="emailTemplate">
+        <div class="email-item" data-email-id="">
+            <div class="email-date"></div>
+            <div class="email-sender"></div>
+            <div class="email-subject"></div>
+        </div>
+    </template>
+
+    <template id="emailDetailsTemplate">
+        <div class="email-header" style="margin-bottom: 24px;">
+            <h3 style="color: #A88EBC; margin-bottom: 8px;" class="detail-subject"></h3>
+            <div style="color: #C0C0C0; margin-bottom: 4px;">From: <span class="detail-sender"></span></div>
+            <div style="color: #999999; font-size: 12px;" class="detail-date"></div>
+        </div>
+        
+        <div class="analysis-section">
+            <div class="analysis-title">🛡️ Spam Analysis</div>
+            <div id="spamResult" style="margin-top: 12px;"></div>
+        </div>
+        
+        <div class="analysis-section">
+            <div class="analysis-title">🔍 Email Analysis</div>
+            <div id="emailAnalysis" style="margin-top: 12px;"></div>
+        </div>
+        
+        <div class="analysis-section">
+            <div class="analysis-title">✍️ Draft Response</div>
+            <div id="draftResult" style="margin-top: 12px;"></div>
+        </div>
+    </template>
+</body>
+</html>

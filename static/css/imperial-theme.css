@@ -1,0 +1,457 @@
+/* 
+Imperial Purple Theme for NimbusRelay
+Exuding grandeur, prestige, and nobility with regal colors
+Following Pantone Matching System (PMS) alignment with imperial hues
+*/
+
+/* Color Palette - Imperial & Majestic Colors */
+:root {
+  /* Primary Imperial Colors */
+  --imperial-purple: #4B0082;           /* Deep Imperial Purple */
+  --royal-blue: #1E1B45;               /* Dark Royal Blue */
+  --deep-maroon: #800020;              /* Rich Maroon */
+  --navy-imperial: #0F1B3C;            /* Imperial Navy */
+  
+  /* Accent & Supporting Colors */
+  --soft-lavender: #A88EBC;            /* Soft Lavender Accent */
+  --metallic-silver: #C0C0C0;          /* Metallic Silver */
+  --pearl-white: #F8F8FF;              /* Pearl White */
+  --charcoal-gray: #333333;            /* Charcoal Gray */
+  
+  /* Background & Surface Colors */
+  --background-primary: #0F0F0F;       /* Deep Black */
+  --background-secondary: #1A1A1A;     /* Rich Black */
+  --surface-elevated: #2D2D2D;         /* Elevated Surface */
+  --surface-glass: rgba(30, 30, 30, 0.95); /* Glass Effect */
+  
+  /* Text & Content Colors */
+  --text-primary: #E6E6E6;             /* Primary Text */
+  --text-secondary: #C0C0C0;           /* Secondary Text */
+  --text-muted: #999999;               /* Muted Text */
+  --text-accent: #A88EBC;              /* Accent Text */
+  
+  /* Border & Stroke Colors */
+  --border-primary: rgba(75, 0, 130, 0.3);
+  --border-accent: rgba(168, 142, 188, 0.4);
+  --border-subtle: rgba(75, 0, 130, 0.1);
+  
+  /* Interactive States */
+  --hover-overlay: rgba(75, 0, 130, 0.1);
+  --active-overlay: rgba(75, 0, 130, 0.2);
+  --selected-overlay: rgba(168, 142, 188, 0.15);
+  
+  /* Shadow & Glow Effects */
+  --shadow-imperial: 0 4px 16px rgba(75, 0, 130, 0.3);
+  --shadow-elevation: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --glow-accent: 0 0 20px rgba(168, 142, 188, 0.3);
+  
+  /* Gradients */
+  --gradient-imperial: linear-gradient(135deg, #4B0082 0%, #5D1A8B 50%, #800020 100%);
+  --gradient-royal: linear-gradient(90deg, #1E1B45 0%, #4B0082 50%, #800020 100%);
+  --gradient-surface: linear-gradient(135deg, #1E1B45 0%, #2D2D2D 100%);
+  --gradient-background: linear-gradient(135deg, #0F0F0F 0%, #1A1A2E 50%, #16213E 100%);
+  
+  /* Header specific colors */
+  --header-background: #0F0F0F;                /* Clean black background */
+  --header-border: rgba(255, 255, 255, 0.08); /* Subtle border */
+  --header-shadow: 0 1px 0 rgba(255, 255, 255, 0.05); /* Minimal shadow */
+}
+
+/* Microsoft FAST Component Overrides */
+fast-text-field {
+  --neutral-fill-rest: var(--background-secondary);
+  --neutral-fill-hover: var(--surface-elevated);
+  --neutral-foreground-rest: var(--text-primary);
+  --accent-fill-rest: var(--imperial-purple);
+  --accent-fill-hover: #5D1A8B;
+  --neutral-stroke-rest: var(--border-primary);
+  --neutral-stroke-hover: var(--border-accent);
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+fast-text-field::part(control) {
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-size: 14px;
+  background: var(--background-secondary);
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+fast-text-field::part(control):hover {
+  border-color: var(--border-accent);
+  background: var(--surface-elevated);
+}
+
+fast-text-field::part(control):focus {
+  border-color: var(--soft-lavender);
+  box-shadow: 0 0 0 2px rgba(168, 142, 188, 0.3);
+}
+
+fast-text-field::part(label) {
+  color: var(--text-accent);
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+fast-button {
+  --neutral-fill-rest: transparent;
+  --neutral-fill-hover: rgba(255, 255, 255, 0.05);
+  --neutral-fill-active: rgba(255, 255, 255, 0.08);
+  --accent-fill-rest: #1A1A1A;
+  --accent-fill-hover: #2D2D2D;
+  --accent-fill-active: #333333;
+  --neutral-foreground-rest: var(--text-primary);
+  --accent-foreground-rest: var(--text-primary);
+}
+
+fast-button::part(control) {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+fast-button::part(control):hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+fast-button[appearance="accent"]::part(control) {
+  background: #1A1A1A;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #E6E6E6;
+}
+
+fast-button[appearance="accent"]::part(control):hover {
+  background: #2D2D2D;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+fast-button[appearance="stealth"]::part(control) {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #C0C0C0;
+}
+
+fast-button[appearance="stealth"]::part(control):hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #E6E6E6;
+}
+
+fast-badge {
+  --accent-fill-rest: var(--deep-maroon);
+  --accent-foreground-rest: var(--pearl-white);
+}
+
+fast-badge::part(control) {
+  border-radius: 12px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Custom Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--imperial-purple);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--soft-lavender);
+}
+
+/* Selection Styling */
+::selection {
+  background: var(--selected-overlay);
+  color: var(--text-primary);
+}
+
+/* Focus Outline */
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--soft-lavender);
+  outline-offset: 2px;
+}
+
+/* Animation Keyframes */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Loading Animation */
+.loading-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(168, 142, 188, 0.1) 25%,
+    rgba(168, 142, 188, 0.3) 50%,
+    rgba(168, 142, 188, 0.1) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Utility Classes */
+.glass-effect {
+  background: var(--surface-glass);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-primary);
+}
+
+.imperial-gradient {
+  background: var(--gradient-imperial);
+}
+
+.royal-gradient {
+  background: var(--gradient-royal);
+}
+
+.surface-gradient {
+  background: var(--gradient-surface);
+}
+
+.text-imperial {
+  color: var(--imperial-purple);
+}
+
+.text-accent {
+  color: var(--text-accent);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.shadow-imperial {
+  box-shadow: var(--shadow-imperial);
+}
+
+.shadow-elevation {
+  box-shadow: var(--shadow-elevation);
+}
+
+.glow-accent {
+  box-shadow: var(--glow-accent);
+}
+
+/* Responsive Typography */
+.heading-imperial {
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 700;
+  background: var(--gradient-imperial);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.2;
+}
+
+.subtitle-regal {
+  font-size: clamp(1rem, 2.5vw, 1.25rem);
+  color: var(--text-accent);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Interactive Elements */
+.interactive-card {
+  background: var(--surface-glass);
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  padding: 20px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.interactive-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-imperial);
+  border-color: var(--border-accent);
+  background: rgba(30, 30, 30, 0.98);
+}
+
+.interactive-card:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-elevation);
+}
+
+/* Status Indicators */
+.status-success {
+  color: #40A74F;
+  background: rgba(64, 167, 79, 0.1);
+  border: 1px solid rgba(64, 167, 79, 0.3);
+}
+
+.status-warning {
+  color: #FFA726;
+  background: rgba(255, 167, 38, 0.1);
+  border: 1px solid rgba(255, 167, 38, 0.3);
+}
+
+.status-error {
+  color: #EF5350;
+  background: rgba(239, 83, 80, 0.1);
+  border: 1px solid rgba(239, 83, 80, 0.3);
+}
+
+.status-info {
+  color: var(--soft-lavender);
+  background: rgba(168, 142, 188, 0.1);
+  border: 1px solid var(--border-accent);
+}
+
+/* Content Container Styling */
+.imperial-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* Folder List Styling Enhancements */
+.folder-count {
+  font-size: 11px;
+  color: #999999;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 4px 10px;
+  border-radius: 4px;
+  min-width: 24px;
+  text-align: center;
+  margin-left: auto;
+  font-weight: 500;
+  display: inline-block;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.folder-indicator {
+  font-size: 12px;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+
+.folder-indicator.hidden {
+  color: #FFD700;
+}
+
+.folder-indicator.non-selectable {
+  color: #FF6B6B;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  :root {
+    --text-primary: #FFFFFF;
+    --text-secondary: #E0E0E0;
+    --border-primary: rgba(255, 255, 255, 0.3);
+    --imperial-purple: #6A1B9A;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Spam Detection Styles */
+.email-item.spam-detected {
+  border-left: 3px solid #EF5350;
+  background: rgba(239, 83, 80, 0.05);
+  opacity: 0.8;
+}
+
+.email-item.spam-detected:hover {
+  background: rgba(239, 83, 80, 0.1);
+}
+
+.spam-indicator {
+  color: #EF5350 !important;
+  font-weight: bold !important;
+  font-size: 10px !important;
+  background: rgba(239, 83, 80, 0.1) !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  margin-left: 8px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid rgba(239, 83, 80, 0.3);
+}
+
+/* Remove border and background from last 3 main-toolbar buttons */
+#togglePlainBtn[appearance="stealth"]::part(control),
+#toggleHtmlBtn[appearance="stealth"]::part(control),
+#viewHtmlSourceBtn[appearance="stealth"]::part(control) {
+  border: none !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure last 3 main-toolbar buttons match size of others */
+#togglePlainBtn[appearance="stealth"]::part(control),
+#toggleHtmlBtn[appearance="stealth"]::part(control),
+#viewHtmlSourceBtn[appearance="stealth"]::part(control) {
+  padding: 8px 16px !important;
+  border-radius: 6px !important;
+}

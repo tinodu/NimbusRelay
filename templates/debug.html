@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NimbusRelay Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: #e6e6e6;
+            padding: 20px;
+        }
+        .debug-section {
+            background: #2d2d2d;
+            border: 1px solid #4B0082;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 10px 0;
+        }
+        .debug-title {
+            color: #A88EBC;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        pre {
+            background: #1e1e1e;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            background: #4B0082;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #5D1A8B;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background: rgba(40, 167, 69, 0.2); border: 1px solid #28a745; }
+        .error { background: rgba(220, 53, 69, 0.2); border: 1px solid #dc3545; }
+        .info { background: rgba(0, 123, 255, 0.2); border: 1px solid #007bff; }
+    </style>
+</head>
+<body>
+    <h1>🌩️ NimbusRelay Debug Console</h1>
+    
+    <div class="debug-section">
+        <div class="debug-title">Configuration Status</div>
+        <button onclick="checkConfig()">Check Configuration</button>
+        <div id="configResult"></div>
+    </div>
+    
+    <div class="debug-section">
+        <div class="debug-title">Service Connection</div>
+        <button onclick="testConnection()">Test Connection</button>
+        <div id="connectionResult"></div>
+    </div>
+    
+    <div class="debug-section">
+        <div class="debug-title">API Endpoints</div>
+        <button onclick="testFolders()">Test Folders API</button>
+        <button onclick="testEmails()">Test Emails API</button>
+        <div id="apiResult"></div>
+    </div>
+    
+    <div class="debug-section">
+        <div class="debug-title">Main Application</div>
+        <button onclick="openMainApp()">Open Main Application</button>
+        <button onclick="testDOMElements()">Test DOM Elements</button>
+        <div id="domResult"></div>
+    </div>
+
+    <script>
+        function showResult(elementId, content, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}"><pre>${content}</pre></div>`;
+        }
+
+        async function checkConfig() {
+            try {
+                const response = await fetch('/api/config');
+                const data = await response.json();
+                showResult('configResult', JSON.stringify(data, null, 2), 'success');
+            } catch (error) {
+                showResult('configResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testConnection() {
+            try {
+                const response = await fetch('/api/connect', { method: 'POST' });
+                const data = await response.json();
+                showResult('connectionResult', JSON.stringify(data, null, 2), 
+                    data.success ? 'success' : 'error');
+            } catch (error) {
+                showResult('connectionResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testFolders() {
+            try {
+                const response = await fetch('/api/folders');
+                const data = await response.json();
+                showResult('apiResult', `Folders API Response:\n${JSON.stringify(data, null, 2)}`, 
+                    data.folders ? 'success' : 'error');
+            } catch (error) {
+                showResult('apiResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testEmails() {
+            try {
+                const response = await fetch('/api/emails?folder=INBOX&limit=5');
+                const data = await response.json();
+                showResult('apiResult', `Emails API Response:\n${JSON.stringify(data, null, 2)}`, 
+                    data.emails ? 'success' : 'error');
+            } catch (error) {
+                showResult('apiResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        function openMainApp() {
+            window.open('/', '_blank');
+        }
+
+        function testDOMElements() {
+            // This would be used to test if we're in the main app
+            if (window.location.pathname === '/') {
+                const configModal = document.getElementById('configModal');
+                const mainInterface = document.getElementById('mainInterface');
+                
+                const results = {
+                    configModal: configModal ? 'Found' : 'Missing',
+                    mainInterface: mainInterface ? 'Found' : 'Missing',
+                    configModalDisplay: configModal ? configModal.style.display : 'N/A',
+                    mainInterfaceClass: mainInterface ? mainInterface.className : 'N/A'
+                };
+                
+                showResult('domResult', JSON.stringify(results, null, 2), 'info');
+            } else {
+                showResult('domResult', 'DOM test only works on main application page', 'info');
+            }
+        }
+
+        // Auto-run configuration check on load
+        window.addEventListener('load', checkConfig);
+    </script>
+</body>
+</html>

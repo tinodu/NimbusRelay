@@ -136,6 +136,12 @@ ENV/
 env.bak/
 venv.bak/
 
+# Legacy and development files
+legacy/
+*.legacy
+*.backup
+*.old
+
 # Spyder project settings
 .spyderproject
 .spyproject
