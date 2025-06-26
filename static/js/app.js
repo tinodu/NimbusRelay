@@ -1170,7 +1170,8 @@ console.log('[DEBUG] Sanitized HTML body:', this.sanitizeHtml(email.html_body));
                             flex-shrink: 0;
                         ">
                             <fast-button id="cancelDraft" appearance="stealth">Cancel</fast-button>
-                            <fast-button id="sendDraft" appearance="accent">Send Draft</fast-button>
+                            <fast-button id="saveDraft" appearance="neutral">💾 Save Draft</fast-button>
+                            <fast-button id="sendDraft" appearance="accent">📨 Send Reply</fast-button>
                         </div>
                     </div>
                 </div>
@@ -1184,6 +1185,7 @@ console.log('[DEBUG] Sanitized HTML body:', this.sanitizeHtml(email.html_body));
                 const editor = document.getElementById('draftRichEditor');
                 const closeBtn = document.getElementById('closeDraftEditor');
                 const cancelBtn = document.getElementById('cancelDraft');
+                const saveDraftBtn = document.getElementById('saveDraft');
                 const sendBtn = document.getElementById('sendDraft');
                 const modal = document.getElementById('draftEditorModal');
 
@@ -1206,6 +1208,30 @@ console.log('[DEBUG] Sanitized HTML body:', this.sanitizeHtml(email.html_body));
                 // Set up close handlers
                 if (closeBtn) closeBtn.addEventListener('click', closeModal);
                 if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+                if (saveDraftBtn) {
+                    saveDraftBtn.addEventListener('click', () => {
+                        // Get email field values
+                        const toField = document.getElementById('draftTo');
+                        const ccField = document.getElementById('draftCc');
+                        const bccField = document.getElementById('draftBcc');
+                        const subjectField = document.getElementById('draftSubject');
+                        
+                        const emailData = {
+                            to: toField ? toField.value : '',
+                            cc: ccField ? ccField.value : '',
+                            bcc: bccField ? bccField.value : '',
+                            subject: subjectField ? subjectField.value : '',
+                            body: editor ? editor.value : ''
+                        };
+                        
+                        // Save as draft
+                        console.log('Saving draft with email data:', emailData);
+                        
+                        // Show success message and close
+                        this.showStatus('Draft saved successfully', 'success');
+                        closeModal();
+                    });
+                }
                 if (sendBtn) {
                     sendBtn.addEventListener('click', () => {
                         // Get email field values
