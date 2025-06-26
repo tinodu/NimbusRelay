@@ -1,219 +1,279 @@
-# 🌩️ NimbusRelay - Minimalistic Email Management
+# NimbusRelay Documentation
 
-> **A beautiful, responsive email client with AI-powered spam detection and draft generation**
+Welcome to the comprehensive documentation for **NimbusRelay** - an AI-powered email management system that combines intelligent analysis with modern email functionality.
 
-NimbusRelay combines elegant minimalist design with powerful AI capabilities to revolutionize your email workflow. Built with Imperial Purple theme for grandeur and nobility.
+## 📚 Documentation Overview
 
-![Imperial Purple Theme](https://img.shields.io/badge/Theme-Imperial%20Purple-4B0082?style=for-the-badge)
-![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=for-the-badge&logo=python)
-![Microsoft FAST](https://img.shields.io/badge/Frontend-Microsoft%20FAST-0078D4?style=for-the-badge)
-![Flask](https://img.shields.io/badge/Backend-Flask-000000?style=for-the-badge&logo=flask)
+This documentation suite provides everything you need to successfully install, configure, and use NimbusRelay, from quick setup to advanced troubleshooting.
 
-## ✨ Features
+## 🚀 Getting Started
 
-### 🎨 **Pixel-Perfect Minimalistic Design**
-- **Imperial Purple Theme**: Exudes grandeur, prestige, and nobility
-- **Canvas-Based Rendering**: Game-engine style scene graph for ultra-smooth performance
-- **Responsive Layout**: Beautiful on desktop, tablet, and mobile
-- **FAST Components**: Microsoft's modern web component library
+### For New Users
+1. **[Quick Start Guide](QUICK_START.md)** - Get up and running in 5 minutes
+2. **[Configuration Guide](CONFIGURATION.md)** - Detailed setup instructions
+3. **[User Manual](USER_MANUAL.md)** - Complete feature overview
 
-### 🤖 **AI-Powered Intelligence**
-- **Smart Spam Detection**: Advanced LLM analysis to identify unwanted emails
-- **Intelligent Draft Generation**: AI-crafted responses based on email analysis
-- **Context-Aware Analysis**: Deep understanding of email content and sentiment
-- **Azure OpenAI Integration**: Enterprise-grade AI capabilities
+### For Developers
+1. **[API Reference](API_REFERENCE.md)** - Complete API documentation
+2. **[Architecture Overview](#architecture)** - Technical design and structure
+3. **[Contributing Guidelines](#contributing)** - How to contribute to the project
 
-### 📧 **Professional Email Management**
-- **IMAP Support**: Connect to any email provider
-- **Folder Organization**: Intuitive folder structure and navigation
-- **Real-time Updates**: Live synchronization with WebSocket technology
-- **Secure Configuration**: Environment-based credential management
+## 📖 Complete Documentation
 
-## 🚀 Quick Start
+### Essential Documents
 
-### Prerequisites
-- Python 3.9+
-- Azure OpenAI account (for AI features)
-- IMAP-enabled email account
+| Document | Description | Best For |
+|----------|-------------|----------|
+| **[User Manual](USER_MANUAL.md)** | Comprehensive guide covering all features, setup, and usage | All users - complete reference |
+| **[Quick Start Guide](QUICK_START.md)** | Get NimbusRelay running quickly with minimal setup | New users - fast setup |
+| **[Configuration Guide](CONFIGURATION.md)** | Detailed configuration options and email provider setup | Users needing detailed setup help |
 
-### Installation
+### Reference and Support
+
+| Document | Description | Best For |
+|----------|-------------|----------|
+| **[API Reference](API_REFERENCE.md)** | Complete REST API documentation with examples | Developers and integrators |
+| **[Troubleshooting Guide](TROUBLESHOOTING.md)** | Common issues and step-by-step solutions | Users experiencing problems |
+| **[FAQ](FAQ.md)** | Frequently asked questions and answers | Quick answers to common questions |
+
+## 🎯 Choose Your Path
+
+### I'm New to NimbusRelay
+```
+📖 Start Here → Quick Start Guide → User Manual → Configuration Guide
+```
+
+### I Need to Set Up Email Integration
+```
+⚙️ Configuration Guide → Troubleshooting Guide (if issues) → FAQ
+```
+
+### I Want to Integrate or Extend NimbusRelay
+```
+💻 API Reference → User Manual (Architecture) → Contributing Guidelines
+```
+
+### I'm Having Problems
+```
+🔧 Troubleshooting Guide → FAQ → User Manual (relevant sections)
+```
+
+## 📋 Quick Reference
+
+### System Requirements
+- **Python**: 3.8 or higher
+- **Browser**: Modern web browser with JavaScript
+- **Email**: IMAP/SMTP enabled account
+- **AI Service**: Azure OpenAI account (for AI features)
+- **Resources**: 2GB RAM minimum, 500MB storage
+
+### Key Configuration Files
+- `.env` - Main configuration file
+- `prompts/` - AI analysis templates
+- `docs/` - This documentation
+
+### Important URLs
+- **Application**: `http://localhost:5000`
+- **Configuration API**: `http://localhost:5000/api/config`
+- **Email API**: `http://localhost:5000/api/emails`
+
+### Quick Commands
 ```powershell
-# Clone the repository
-git clone <repository-url>
-cd NimbusRelay
-
 # Install dependencies
 pip install -r requirements.txt
 
-# Run the application
-python app.py
+# Start application
+python main.py
+
+# Start with batch file
+start.bat
+
+# Test configuration
+curl http://localhost:5000/api/config
 ```
 
-### Configuration
-1. Open http://localhost:5000 in your browser
-2. Click "Configure" to set up your credentials
-3. Enter your email and AI service details
-4. Connect and start managing your emails!
+## 🏗 Architecture
 
-## 🛠️ Configuration Parameters
+NimbusRelay follows a modular architecture with clear separation of concerns:
 
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI service endpoint | `https://your-service.openai.azure.com/` |
-| `AZURE_OPENAI_API_KEY` | Azure OpenAI API key | `abc123...` |
-| `AZURE_OPENAI_DEPLOYMENT` | Model deployment name | `gpt-4` |
-| `AZURE_OPENAI_API_VERSION` | API version | `2024-12-01-preview` |
-| `IMAP_SERVER` | Email server hostname | `imap.gmail.com` |
-| `IMAP_PORT` | IMAP port (usually 993) | `993` |
-| `IMAP_USERNAME` | Your email address | `user@example.com` |
-| `IMAP_PASSWORD` | Email account password or app password | `password123` |
-| `SMTP_SERVER` | SMTP server hostname (auto-configured) | `smtp.gmail.com` |
-| `SMTP_PORT` | SMTP port (usually 587) | `587` |
-| `SMTP_USERNAME` | SMTP authentication username | `user@example.com` |
-| `SMTP_PASSWORD` | SMTP authentication password | `password123` |
-| `SMTP_SENDER_EMAIL` | Full sender email address for outgoing emails | `sender@domain.com` |
-| `SMTP_USE_TLS` | Enable TLS encryption | `true` |
+### Core Components
 
-## 🏗️ Architecture
+**Application Layer** (`src/core/`)
+- Application factory and configuration
+- Dependency injection and service management
 
-### Backend (Python/Flask)
-```
-app.py              # Main Flask application
-├── EmailService    # IMAP email operations
-├── AIService       # Azure OpenAI integration
-└── API Routes      # RESTful endpoints
-```
+**Services** (`src/services/`)
+- Service coordinator and manager
+- Email operations manager
+- AI operations manager
 
-### Frontend (Microsoft FAST)
-```
-templates/index.html    # Main application template
-static/
-├── css/imperial-theme.css  # Imperial purple styling
-└── js/app.js              # Application logic
-```
+**Email Services** (`src/email_service/`)
+- IMAP connection and email management
+- SMTP service for sending emails
+- Message parsing and folder management
 
-### AI Prompts
-```
-prompts/
-├── email-spam.md      # Spam detection prompt
-├── email-analyze.md   # Email analysis prompt
-└── email-draft.md     # Draft generation prompt
-```
+**AI Services** (`src/ai/`)
+- Azure OpenAI integration
+- Prompt loading and management
+- Analysis interfaces
 
-## 🎯 API Endpoints
+**Web Layer** (`src/routes/`, `src/websocket/`)
+- REST API endpoints
+- WebSocket handlers for real-time updates
+- Static file serving
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/config` | GET | Get configuration status |
-| `/api/config` | POST | Save configuration |
-| `/api/connect` | POST | Connect to services |
-| `/api/folders` | GET | List email folders |
-| `/api/emails` | GET | Get emails from folder |
-| `/api/analyze-spam` | POST | Analyze email for spam |
-| `/api/analyze-email` | POST | Comprehensive email analysis |
-| `/api/generate-draft` | POST | Generate draft response |
+**Models** (`src/models/`)
+- Email data models
+- Configuration models
 
-## 🧪 Testing
+### Technology Stack
 
-### Run Backend Tests
-```powershell
-cd src/tests
-python -m pytest test_app.py -v
-```
+**Backend:**
+- **Python 3.8+** - Core application language
+- **Flask** - Web framework
+- **Flask-SocketIO** - Real-time WebSocket communication
+- **IMAP/SMTP** - Email protocol handling
+- **Azure OpenAI** - AI analysis services
 
-### Demo API Functionality
-```powershell
-python demo.py
-```
+**Frontend:**
+- **HTML5/CSS3** - Modern web standards
+- **JavaScript** - Client-side interactivity
+- **Microsoft FAST Components** - UI component library
+- **Socket.IO** - Real-time client communication
 
-## 🎨 Design Philosophy
-
-### Core UX Concept
-> *A single, unified canvas presents your entire email workflow with game-engine‐style rendering: messages, folders, and actions all live on a lightweight 2D scene graph.*
-
-### Key Principles
-- **Minimalism**: Clean, distraction-free interface
-- **Performance**: GPU-accelerated rendering with 60fps target
-- **Modularity**: Reusable components and clear separation of concerns
-- **Imperial Aesthetics**: Royal purple palette conveying luxury and sophistication
-
-### Color Palette
-- **Primary**: Imperial Purple (#4B0082)
-- **Secondary**: Deep Navy (#1E1B45), Dark Maroon (#800020)
-- **Accents**: Metallic Silver (#C0C0C0)
-- **Neutrals**: Charcoal (#2D2D2D), Soft Lavender (#A88EBC)
-
-## 📁 Project Structure
-
-```
-NimbusRelay/
-├── app.py                  # Main Flask application
-├── requirements.txt        # Python dependencies
-├── demo.py                 # API demonstration script
-├── .env                    # Environment variables (create this)
-├── prompts/               # AI prompt templates
-│   ├── email-spam.md
-│   ├── email-analyze.md
-│   └── email-draft.md
-├── templates/             # HTML templates
-│   └── index.html
-├── static/               # Static assets
-│   ├── css/
-│   │   └── imperial-theme.css
-│   └── js/
-│       └── app.js
-└── src/
-    └── tests/            # Test suite
-        ├── test_app.py
-        └── test_frontend.js
-```
-
-## 🔒 Security
-
-- **Environment Variables**: Sensitive data stored in .env file
-- **CORS Protection**: Configured for secure frontend communication
-- **Input Validation**: Sanitized email content processing
-- **Secure Connections**: SSL/TLS for IMAP and HTTPS for API calls
-
-## 🌟 Roadmap
-
-### Upcoming Features
-- [ ] Drag-and-drop email organization
-- [ ] Custom AI prompt templates
-- [ ] Email templates and signatures
-- [ ] Advanced filtering and search
-- [ ] Mobile-first responsive improvements
-- [ ] Plugin system for extensibility
-
-### Performance Optimizations
-- [ ] Email content caching
-- [ ] Lazy loading for large inboxes
-- [ ] Background sync capabilities
-- [ ] Offline mode support
+**Infrastructure:**
+- **Environment Variables** - Configuration management
+- **TLS/SSL** - Secure communications
+- **RESTful API** - Service interfaces
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Follow the SOLID principles and coding guidelines
-4. Write tests for new functionality
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
+We welcome contributions from the community! Here's how you can help:
 
-## 📄 License
+### Ways to Contribute
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+**For Users:**
+- 🐛 Report bugs and issues
+- 💡 Suggest new features
+- 📝 Improve documentation
+- 🧪 Test new releases
 
-## 🙏 Acknowledgments
+**For Developers:**
+- 🔧 Fix bugs and issues
+- ✨ Develop new features
+- 🏗 Improve architecture
+- 🔌 Create integrations
 
-- **Microsoft FAST**: For the beautiful web components
-- **Azure OpenAI**: For powerful AI capabilities
-- **Flask Community**: For the robust web framework
-- **Imperial Color Inspiration**: From royal design traditions
+**For Technical Writers:**
+- 📚 Enhance documentation
+- 🎓 Create tutorials
+- 🌍 Translate content
+- ✍️ Write guides and articles
+
+### Getting Started
+
+1. **Understand the Codebase**
+   - Review the architecture overview
+   - Explore the modular design
+   - Understand the data flow
+
+2. **Set Up Development Environment**
+   - Fork and clone the repository
+   - Install development dependencies
+   - Run tests and verify setup
+
+3. **Find Contribution Opportunities**
+   - Check existing issues and feature requests
+   - Look for "good first issue" labels
+   - Discuss ideas with the community
+
+4. **Submit Your Changes**
+   - Follow code style guidelines
+   - Include tests for new features
+   - Update documentation as needed
+   - Submit pull requests for review
+
+## 🆘 Getting Help
+
+### Self-Service Resources
+
+1. **Search the Documentation** - Use Ctrl+F to find specific topics
+2. **Check the FAQ** - Common questions and answers
+3. **Review Troubleshooting Guide** - Step-by-step problem solving
+4. **Examine the Code** - Source code is well-documented
+
+### Community Support
+
+1. **Issues and Discussions** - Check project repository
+2. **Community Forums** - Ask questions and share experiences
+3. **Documentation Feedback** - Suggest improvements
+
+### When Seeking Help
+
+**Provide Complete Information:**
+- Operating system and version
+- Python version
+- Complete error messages
+- Steps to reproduce the issue
+- Configuration details (sanitized)
+
+**Be Specific:**
+- What you were trying to do
+- What you expected to happen
+- What actually happened
+- Any troubleshooting steps you've tried
+
+## 📊 Documentation Quality
+
+We strive to maintain high-quality documentation that is:
+
+- **Complete** - Covers all features and use cases
+- **Accurate** - Up-to-date with current functionality
+- **Clear** - Easy to understand for all skill levels
+- **Practical** - Includes real-world examples
+- **Searchable** - Well-organized and indexed
+
+### Documentation Standards
+
+- **Comprehensive Coverage** - All features documented
+- **Step-by-Step Instructions** - Clear, actionable guidance
+- **Code Examples** - Working examples for all concepts
+- **Visual Aids** - Diagrams and screenshots where helpful
+- **Regular Updates** - Keep pace with software changes
+
+## 🔄 Documentation Updates
+
+This documentation is actively maintained and regularly updated:
+
+- **Version Tracking** - Each document includes version and date
+- **Change Logs** - Major updates are documented
+- **User Feedback** - Improvements based on user suggestions
+- **Accuracy Checks** - Regular validation against current software
+
+### Last Updated
+- **User Manual**: June 26, 2025
+- **Quick Start Guide**: June 26, 2025
+- **Configuration Guide**: June 26, 2025
+- **API Reference**: June 26, 2025
+- **Troubleshooting Guide**: June 26, 2025
+- **FAQ**: June 26, 2025
 
 ---
 
-<div align="center">
-  <strong>Built with 💜 for the modern email experience</strong>
-</div>
+## 📞 Contact and Support
+
+For questions not covered in this documentation:
+
+1. **Review Related Sections** - Check all relevant documentation
+2. **Search Existing Issues** - Look for similar problems
+3. **Ask the Community** - Engage with other users
+4. **Report Issues** - Submit detailed bug reports
+5. **Suggest Improvements** - Help make NimbusRelay better
+
+---
+
+**Welcome to NimbusRelay!** 🎉
+
+We hope this documentation helps you get the most out of your AI-powered email management experience. Whether you're just getting started or diving deep into advanced features, we've got you covered.
+
+*Happy emailing with NimbusRelay!* ✉️🚀
